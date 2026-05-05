@@ -166,7 +166,7 @@ let docId = '';
 // ── 初始化 ────────────────────────────────────────────────
 (async function init() {
   const params = new URLSearchParams(location.search);
-  docId = params.get('doc') || '';
+  docId = params.get('doc') || params.get('id') || '';
   if (!docId) { renderError('未提供文號，請透過掃描 QR Code 開啟此頁面。'); return; }
   try {
     const res  = await fetch(`${GAS_URL}?action=getDoc&doc_id=${encodeURIComponent(docId)}`);
@@ -389,9 +389,8 @@ async function confirmArchive() {
 
 // ── API ───────────────────────────────────────────────────
 async function callAddHistory(payload) {
-  const res  = await fetch(`${GAS_URL}?action=addHistory`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  });
+  const qs   = new URLSearchParams({ action: 'addHistory', ...payload });
+  const res  = await fetch(`${GAS_URL}?${qs.toString()}`);
   const data = await res.json();
   if (!data.success) throw new Error(data.message || '操作失敗');
   return data;
