@@ -185,12 +185,12 @@ function renderPage() {
   const doc     = docData;
   const isOver  = doc.due_date && doc.status !== 'ARCHIVED' && new Date(doc.due_date) < new Date();
   const isDone  = doc.status === 'ARCHIVED' || doc.status === 'RETURNED';
-  const cosigns = doc.planned_cosign ? doc.planned_cosign.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const cosigns = doc.planned_route ? doc.planned_route.split(',').map(s => s.trim()).filter(Boolean) : [];
 
   // 收件紀錄 map: unit → timestamp
   const receivedMap = {};
   historyData.forEach(h => {
-    if (h.action === 'RECEIVE') receivedMap[h.unit] = h.timestamp;
+    if (h.action === 'RECEIVE') receivedMap[h.actor_unit] = h.timestamp;
   });
 
   document.getElementById('app').innerHTML = `
@@ -299,7 +299,7 @@ function renderTimeline() {
       <div class="tl-dot ${ACTION_DOT[h.action] || 'tl-dot-create'}"></div>
       <div class="tl-body">
         <div class="tl-action">${ACTION_LABEL[h.action] || h.action}</div>
-        <div class="tl-unit">${esc(h.unit)}</div>
+        <div class="tl-unit">${esc(h.actor_unit || h.unit || '')}</div>
         <div class="tl-time">${formatTime(h.timestamp)}</div>
         ${h.comment ? `<div class="tl-comment">💬 ${esc(h.comment)}</div>` : ''}
       </div>
@@ -312,11 +312,11 @@ async function receiveUnit(unit, btn) {
   btn.disabled = true;
   btn.innerHTML = `<span><span class="spinner"></span>${esc(unit)}</span><span class="unit-ts">送出中…</span>`;
   try {
-    await callAddHistory({ doc_id: docId, unit, action: 'RECEIVE', comment: '' });
+    await callAddHistory({ doc_id: docId, actor_unit: unit, action: 'RECEIVE', comment: '' });
     const ts = new Date().toISOString();
     btn.className = 'unit-btn unit-btn-done';
     btn.innerHTML = `<span>${esc(unit)}</span><span class="unit-ts">✅ 已收件 ${formatTime(ts)}</span>`;
-    historyData.push({ doc_id: docId, unit, action: 'RECEIVE', timestamp: ts, comment: '' });
+    historyData.push({ doc_id: docId, actor_unit: unit, action: 'RECEIVE', timestamp: ts, comment: '' });
     document.getElementById('timeline').innerHTML = renderTimeline();
     showToast(`${unit} 收件成功`, 'success');
   } catch (e) {
@@ -347,7 +347,7 @@ async function confirmReturn() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>送出中…';
   try {
-    await callAddHistory({ doc_id: docId, unit, action: 'RETURN', comment: reason });
+    await callAddHistory({ doc_id: docId, actor_unit: unit, action: 'RETURN', comment: reason });
     showToast('退件通知已送出，申請人將收到 Email 通知', 'success');
     await refreshDoc();
   } catch (e) {
@@ -376,7 +376,7 @@ async function confirmArchive() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>歸檔中…';
   try {
-    await callAddHistory({ doc_id: docId, unit, action: 'ARCHIVE', comment });
+    await callAddHistory({ doc_id: docId, actor_unit: unit, action: 'ARCHIVE', comment });
     closeArchiveModal();
     showToast('歸檔成功！申請人將收到 Email 通知', 'success');
     await refreshDoc();
@@ -389,7 +389,8 @@ async function confirmArchive() {
 
 // ── API ───────────────────────────────────────────────────
 async function callAddHistory(payload) {
-  const qs   = new URLSearchParams({ action: 'addHistory', ...payload });
+  const { action: histAction, ...rest } = payload;
+  const qs = new URLSearchParams({ action: 'addHistory', ...rest, hist_action: histAction });
   const res  = await fetch(`${GAS_URL}?${qs.toString()}`);
   const data = await res.json();
   if (!data.success) throw new Error(data.message || '操作失敗');
