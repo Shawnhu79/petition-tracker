@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>簽呈申請建檔</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f5f5f5; color: #333; }
@@ -268,7 +267,7 @@
   </div>
 
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v1.2.0</div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v1.3.0</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -510,33 +509,45 @@ async function submitForm() {
 }
 
 // ── 成功頁 ────────────────────────────────────────────────
-async function showSuccess(docId, qrUrl) {
+function showSuccess(docId, qrUrl) {
   document.getElementById('progressPage').style.display = 'none';
   document.getElementById('formPage').style.display     = 'none';
   document.getElementById('successPage').style.display  = 'block';
   document.getElementById('resultDocId').textContent    = docId;
-  const base = location.href.replace(/apply\.html.*$/, '');
-  const url  = (qrUrl && qrUrl !== 'undefined' && qrUrl !== 'null')
+
+  const base      = location.href.replace(/apply\.html.*$/, '');
+  const targetUrl = (qrUrl && qrUrl !== 'undefined' && qrUrl !== 'null')
     ? qrUrl
     : (base + 'doc.html?doc=' + encodeURIComponent(docId));
-  try {
-    const dataUrl = await QRCode.toDataURL(url, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
-    document.getElementById('qrImg').src = dataUrl;
-  } catch (e) {
-    document.getElementById('qrImg').alt = 'QR Code 產生失敗，請截圖文號後手動查詢';
-  }
+
+  const img = document.getElementById('qrImg');
+  img.src = 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl='
+    + encodeURIComponent(targetUrl);
+  img.dataset.url = targetUrl;
 }
 
-function downloadQR() {
-  const link = document.createElement('a');
-  link.download = `QRCode_${document.getElementById('resultDocId').textContent}.png`;
-  link.href = document.getElementById('qrImg').src;
-  link.click();
+async function downloadQR() {
+  const docId  = document.getElementById('resultDocId').textContent;
+  const imgSrc = document.getElementById('qrImg').src;
+  try {
+    const blob    = await fetch(imgSrc).then(r => r.blob());
+    const objUrl  = URL.createObjectURL(blob);
+    const link    = document.createElement('a');
+    link.download = `QRCode_${docId}.png`;
+    link.href     = objUrl;
+    link.click();
+    URL.revokeObjectURL(objUrl);
+  } catch {
+    window.open(imgSrc, '_blank');
+  }
 }
 
 function printQR() {
   const docId  = document.getElementById('resultDocId').textContent;
-  const imgSrc = document.getElementById('qrImg').src;
+  const imgSrc = document.getElementById('qrImg').dataset.url
+    ? 'https://chart.googleapis.com/chart?chs=400x400&cht=qr&choe=UTF-8&chl='
+        + encodeURIComponent(document.getElementById('qrImg').dataset.url)
+    : document.getElementById('qrImg').src;
   const win    = window.open('', '_blank');
   win.document.write(`<html><head><title>QR Code — ${docId}</title>
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif}
