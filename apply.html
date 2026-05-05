@@ -24,17 +24,20 @@
     .error-msg.show { display: block; }
     textarea { resize: vertical; min-height: 80px; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; }
+
+    /* 會簽單位 checkbox */
     .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .checkbox-item { display: flex; align-items: center; gap: 6px; background: #f0f4ff; border: 1.5px solid #c5d0f0; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 14px; transition: all 0.15s; user-select: none; }
     .checkbox-item input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
     .checkbox-item.checked { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+
+    /* 主簽鏈 */
     .main-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
     .chain-unit { background: #e8f0fe; border: 1.5px solid #1a73e8; color: #1a73e8; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
     .chain-arrow { color: #999; font-size: 14px; }
 
     /* 通知名單區 */
     .notify-section { background: #fafafa; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 16px; }
-    .notify-title { font-size: 14px; font-weight: 600; color: #444; margin-bottom: 4px; }
     .tags-container { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; padding: 4px 0; margin: 8px 0; align-items: center; }
     .tag { display: flex; align-items: center; gap: 4px; background: #e8f0fe; border: 1px solid #1a73e8; color: #1a73e8; border-radius: 20px; padding: 4px 10px; font-size: 13px; }
     .tag button { background: none; border: none; cursor: pointer; color: #1a73e8; font-size: 14px; padding: 0; line-height: 1; margin-left: 2px; }
@@ -44,7 +47,7 @@
     .book-header { display: flex; justify-content: space-between; align-items: center; background: #f0f4ff; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #3d5afe; }
     .btn-link { background: none; border: none; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 600; padding: 0; }
     .btn-link:hover { text-decoration: underline; }
-    .contacts-list { max-height: 200px; overflow-y: auto; }
+    .contacts-list { max-height: 220px; overflow-y: auto; }
     .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
     .contact-item:last-child { border-bottom: none; }
     .contact-label { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
@@ -90,6 +93,8 @@
     .btn-row .btn { width: auto; flex: 1; font-size: 14px; padding: 10px; }
     .email-notice { background: #e8f5e9; border: 1.5px solid #4caf50; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #2e7d32; margin: 12px 0; }
     .section-title { font-size: 13px; color: #666; font-weight: 600; margin-bottom: 8px; }
+
+    /* Toast & Spinner */
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; }
     .toast.show { opacity: 1; }
     .toast.error { background: #c62828; }
@@ -102,6 +107,8 @@
 <header>📄 簽呈申請建檔</header>
 
 <div class="container">
+
+  <!-- 申請表單 -->
   <div id="formPage">
     <div class="card">
 
@@ -127,7 +134,7 @@
       <div class="form-group">
         <label>附加通知對象（選填）</label>
         <div class="notify-section">
-          <div class="hint" style="margin-bottom:6px;">申請人 Email 預設會收到通知，可在此新增其他收件人</div>
+          <div class="hint" style="margin-bottom:6px;">申請人 Email 預設會收到通知，可在此勾選其他收件人</div>
 
           <div class="tags-container" id="emailTags">
             <span class="tags-empty" id="tagsEmpty">尚未選取附加通知對象</span>
@@ -206,7 +213,7 @@
     </div>
   </div>
 
-  <!-- 成功頁 -->
+  <!-- 建檔成功頁 -->
   <div id="successPage">
     <div class="card">
       <div class="success-header">
@@ -231,13 +238,24 @@
       <button class="btn btn-primary" style="margin-top:16px;" onclick="resetForm()">再建一筆</button>
     </div>
   </div>
-</div>
 
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
 const GAS_URL  = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
 const BOOK_KEY = 'petition_contacts';
+
+// 預設通訊錄（第一次開啟時自動載入）
+const DEFAULT_CONTACTS = [
+  { name: '胡景翔', email: 'shawnhu79@gmail.com' },
+  { name: '卓子杰', email: 'spectaculartau@gmail.com' },
+  { name: '張紫涵', email: 'shedy8896@gmail.com' },
+  { name: '林育德', email: 'jasper.fongyi@gmail.com' },
+  { name: '呂佳益', email: 'a0926644565@hotmail.com' },
+  { name: '戴秀惠', email: 'jessietai0638@gmail.com' },
+];
+
 const additionalEmails = new Map(); // email → display label
 
 // ── 通訊錄 ────────────────────────────────────────────────
@@ -245,6 +263,10 @@ function loadContacts() { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[
 function saveContacts(c) { localStorage.setItem(BOOK_KEY, JSON.stringify(c)); }
 
 function renderContacts() {
+  // 第一次開啟（localStorage 無資料）→ 載入預設名單
+  if (!localStorage.getItem(BOOK_KEY)) {
+    saveContacts(DEFAULT_CONTACTS);
+  }
   const contacts = loadContacts();
   const list = document.getElementById('contactsList');
   if (!contacts.length) {
@@ -288,7 +310,7 @@ function toggleAddForm() {
 function saveNewContact() {
   const name  = document.getElementById('newContactName').value.trim();
   const email = document.getElementById('newContactEmail').value.trim();
-  if (!name)  { showToast('請輸入姓名', true); return; }
+  if (!name)               { showToast('請輸入姓名', true); return; }
   if (!isValidEmail(email)) { showToast('請輸入有效 Email', true); return; }
   const contacts = loadContacts();
   if (contacts.some(c => c.email === email)) { showToast('此 Email 已在通訊錄中', true); return; }
@@ -405,7 +427,7 @@ async function submitForm() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>建檔中...';
 
-  const cosigned      = [...document.querySelectorAll('input[name="cosign"]:checked')].map(el => el.value);
+  const cosigned       = [...document.querySelectorAll('input[name="cosign"]:checked')].map(el => el.value);
   const applicantEmail = document.getElementById('applicantEmail').value.trim();
   const allEmails      = [applicantEmail, ...additionalEmails.keys()]
     .filter((e, i, a) => a.indexOf(e) === i);
@@ -443,12 +465,14 @@ function showSuccess(docId, qrUrl) {
   document.getElementById('resultDocId').textContent = docId;
   QRCode.toCanvas(document.getElementById('qrCanvas'), qrUrl, { width: 240, margin: 2 });
 }
+
 function downloadQR() {
   const link = document.createElement('a');
   link.download = `QRCode_${document.getElementById('resultDocId').textContent}.png`;
   link.href = document.getElementById('qrCanvas').toDataURL('image/png');
   link.click();
 }
+
 function printQR() {
   const docId  = document.getElementById('resultDocId').textContent;
   const imgSrc = document.getElementById('qrCanvas').toDataURL('image/png');
@@ -459,6 +483,7 @@ function printQR() {
     </head><body onload="window.print()"><img src="${imgSrc}"><p>${docId}</p></body></html>`);
   win.document.close();
 }
+
 function resetForm() {
   document.getElementById('formPage').style.display = 'block';
   document.getElementById('successPage').style.display = 'none';
@@ -482,6 +507,7 @@ function showToast(msg, isError = false) {
   t.className   = `toast show${isError ? ' error' : ''}`;
   setTimeout(() => { t.className = 'toast'; }, 3500);
 }
+
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
