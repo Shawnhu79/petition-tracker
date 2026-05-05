@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>簽呈申請建檔</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f5f5f5; color: #333; }
@@ -255,7 +256,7 @@
       <div class="email-notice">📧 通知 Email 已寄出給所有指定收件人。</div>
       <div class="qr-section">
         <div class="section-title">QR Code（各關卡秘書掃碼收件用）</div>
-        <img id="qrImg" alt="QR Code" style="border:2px solid #eee;border-radius:8px;padding:8px;max-width:240px;display:block;margin:0 auto;">
+        <div id="qrContainer" style="display:inline-block;border:2px solid #eee;border-radius:8px;padding:8px;"></div>
         <div class="qr-hint">請列印或截圖後附於實體文件封面</div>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="downloadQR()">⬇ 下載 PNG</button>
@@ -520,34 +521,26 @@ function showSuccess(docId, qrUrl) {
     ? qrUrl
     : (base + 'doc.html?doc=' + encodeURIComponent(docId));
 
-  const img = document.getElementById('qrImg');
-  img.src = 'https://chart.googleapis.com/chart?chs=300x300&cht=qr&choe=UTF-8&chl='
-    + encodeURIComponent(targetUrl);
-  img.dataset.url = targetUrl;
+  const container = document.getElementById('qrContainer');
+  container.innerHTML = '';
+  container.dataset.url = targetUrl;
+  new QRCode(container, { text: targetUrl, width: 240, height: 240, colorDark: '#000000', colorLight: '#ffffff' });
 }
 
-async function downloadQR() {
+function downloadQR() {
   const docId  = document.getElementById('resultDocId').textContent;
-  const imgSrc = document.getElementById('qrImg').src;
-  try {
-    const blob    = await fetch(imgSrc).then(r => r.blob());
-    const objUrl  = URL.createObjectURL(blob);
-    const link    = document.createElement('a');
-    link.download = `QRCode_${docId}.png`;
-    link.href     = objUrl;
-    link.click();
-    URL.revokeObjectURL(objUrl);
-  } catch {
-    window.open(imgSrc, '_blank');
-  }
+  const imgEl  = document.querySelector('#qrContainer img');
+  if (!imgEl) return;
+  const link    = document.createElement('a');
+  link.download = `QRCode_${docId}.png`;
+  link.href     = imgEl.src;
+  link.click();
 }
 
 function printQR() {
   const docId  = document.getElementById('resultDocId').textContent;
-  const imgSrc = document.getElementById('qrImg').dataset.url
-    ? 'https://chart.googleapis.com/chart?chs=400x400&cht=qr&choe=UTF-8&chl='
-        + encodeURIComponent(document.getElementById('qrImg').dataset.url)
-    : document.getElementById('qrImg').src;
+  const imgEl  = document.querySelector('#qrContainer img');
+  const imgSrc = imgEl ? imgEl.src : '';
   const win    = window.open('', '_blank');
   win.document.write(`<html><head><title>QR Code — ${docId}</title>
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif}
@@ -572,6 +565,7 @@ function resetForm() {
   additionalEmails.clear();
   renderTags();
   renderContacts();
+  document.getElementById('qrContainer').innerHTML = '';
 }
 
 // ── 工具 ──────────────────────────────────────────────────
