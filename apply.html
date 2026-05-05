@@ -256,7 +256,7 @@
       <div class="email-notice">📧 通知 Email 已寄出給所有指定收件人。</div>
       <div class="qr-section">
         <div class="section-title">QR Code（各關卡秘書掃碼收件用）</div>
-        <canvas id="qrCanvas"></canvas>
+        <img id="qrImg" alt="QR Code" style="border:2px solid #eee;border-radius:8px;padding:8px;max-width:240px;display:block;margin:0 auto;">
         <div class="qr-hint">請列印或截圖後附於實體文件封面</div>
         <div class="btn-row">
           <button class="btn btn-secondary" onclick="downloadQR()">⬇ 下載 PNG</button>
@@ -268,6 +268,7 @@
   </div>
 
 </div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v1.2.0</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -509,25 +510,33 @@ async function submitForm() {
 }
 
 // ── 成功頁 ────────────────────────────────────────────────
-function showSuccess(docId, qrUrl) {
-  document.getElementById('formPage').style.display = 'none';
-  document.getElementById('successPage').style.display = 'block';
-  document.getElementById('resultDocId').textContent = docId;
+async function showSuccess(docId, qrUrl) {
+  document.getElementById('progressPage').style.display = 'none';
+  document.getElementById('formPage').style.display     = 'none';
+  document.getElementById('successPage').style.display  = 'block';
+  document.getElementById('resultDocId').textContent    = docId;
   const base = location.href.replace(/apply\.html.*$/, '');
-  const url  = (qrUrl && qrUrl !== 'undefined') ? qrUrl : (base + 'doc.html?doc=' + encodeURIComponent(docId));
-  QRCode.toCanvas(document.getElementById('qrCanvas'), url, { width: 240, margin: 2 });
+  const url  = (qrUrl && qrUrl !== 'undefined' && qrUrl !== 'null')
+    ? qrUrl
+    : (base + 'doc.html?doc=' + encodeURIComponent(docId));
+  try {
+    const dataUrl = await QRCode.toDataURL(url, { width: 240, margin: 2, errorCorrectionLevel: 'M' });
+    document.getElementById('qrImg').src = dataUrl;
+  } catch (e) {
+    document.getElementById('qrImg').alt = 'QR Code 產生失敗，請截圖文號後手動查詢';
+  }
 }
 
 function downloadQR() {
   const link = document.createElement('a');
   link.download = `QRCode_${document.getElementById('resultDocId').textContent}.png`;
-  link.href = document.getElementById('qrCanvas').toDataURL('image/png');
+  link.href = document.getElementById('qrImg').src;
   link.click();
 }
 
 function printQR() {
   const docId  = document.getElementById('resultDocId').textContent;
-  const imgSrc = document.getElementById('qrCanvas').toDataURL('image/png');
+  const imgSrc = document.getElementById('qrImg').src;
   const win    = window.open('', '_blank');
   win.document.write(`<html><head><title>QR Code — ${docId}</title>
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif}
