@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簽呈收件</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 16px 20px; text-align: center; font-size: 18px; font-weight: bold; }
+    .container { max-width: 600px; margin: 24px auto; padding: 0 16px 40px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    .card-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* 狀態徽章 */
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .badge-registered { background: #e3f2fd; color: #1565c0; }
+    .badge-inprogress { background: #fff3e0; color: #e65100; }
+    .badge-archived   { background: #e8f5e9; color: #2e7d32; }
+    .badge-returned   { background: #ffebee; color: #c62828; }
+
+    /* 文件摘要 */
+    .doc-title { font-size: 20px; font-weight: bold; margin: 10px 0 6px; line-height: 1.4; }
+    .doc-id { font-size: 13px; color: #888; margin-bottom: 12px; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .meta-item { background: #f8f9fa; border-radius: 8px; padding: 8px 10px; }
+    .meta-label { font-size: 11px; color: #999; margin-bottom: 2px; }
+    .meta-value { font-size: 14px; font-weight: 600; color: #333; }
+    .meta-full { grid-column: 1 / -1; }
+    .overdue-badge { display: inline-block; background: #ffebee; color: #c62828; border-radius: 4px; font-size: 11px; padding: 1px 6px; margin-left: 6px; font-weight: 600; }
+
+    /* 會簽單位按鈕 */
+    .units-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .unit-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-radius: 10px; border: none; cursor: pointer;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      transition: all 0.15s; width: 100%;
+    }
+    .unit-btn-pending {
+      background: #e8f0fe; color: #1a73e8; border: 2px solid #1a73e8;
+    }
+    .unit-btn-pending:hover { background: #d2e3fc; }
+    .unit-btn-pending:active { transform: scale(0.98); }
+    .unit-btn-pending:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .unit-btn-done {
+      background: #f0f0f0; color: #999; border: 2px solid #e0e0e0; cursor: default;
+    }
+    .unit-ts { font-size: 12px; font-weight: 400; }
+    .no-units { color: #aaa; font-size: 14px; text-align: center; padding: 12px 0; }
+
+    /* 操作區 */
+    .action-row { display: flex; gap: 10px; margin-top: 4px; }
+    .btn { padding: 14px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; font-family: inherit; border: none; transition: all 0.2s; flex: 1; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-archive { background: #1a73e8; color: #fff; }
+    .btn-archive:hover:not(:disabled) { background: #1557b0; }
+    .btn-return  { background: #fff; color: #c62828; border: 2px solid #c62828; }
+    .btn-return:hover:not(:disabled)  { background: #ffebee; }
+
+    /* 退件面板 */
+    .return-panel { display: none; margin-top: 12px; background: #fff8f8; border: 1.5px solid #ffcdd2; border-radius: 10px; padding: 16px; }
+    .return-panel.show { display: block; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px; }
+    label .req { color: #e53935; margin-left: 2px; }
+    input[type="text"], select, textarea {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+      font-size: 14px; font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #1a73e8; }
+    textarea { resize: vertical; min-height: 80px; }
+    .return-btns { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-confirm-return { flex: 1; padding: 12px; background: #c62828; color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit; }
+    .btn-confirm-return:hover { background: #b71c1c; }
+    .btn-cancel { flex: 1; padding: 12px; background: #f0f0f0; color: #555; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit; }
+    .btn-cancel:hover { background: #e0e0e0; }
+
+    /* 歷程 */
+    .timeline { margin-top: 4px; }
+    .tl-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .tl-dot-receive { background: #1a73e8; }
+    .tl-dot-archive { background: #2e7d32; }
+    .tl-dot-return  { background: #c62828; }
+    .tl-dot-create  { background: #9e9e9e; }
+    .tl-body { flex: 1; }
+    .tl-action { font-size: 14px; font-weight: 600; }
+    .tl-unit   { font-size: 13px; color: #555; }
+    .tl-time   { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .tl-comment { font-size: 13px; color: #c62828; margin-top: 4px; background: #ffebee; padding: 6px 8px; border-radius: 6px; }
+    .tl-empty  { color: #bbb; font-size: 13px; text-align: center; padding: 12px 0; }
+
+    /* Archive Modal */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+    .modal-backdrop.show { display: flex; }
+    .modal-sheet { background: #fff; border-radius: 16px 16px 0 0; padding: 24px 20px 32px; width: 100%; max-width: 600px; }
+    .modal-title { font-size: 17px; font-weight: bold; margin-bottom: 6px; }
+    .modal-desc  { font-size: 14px; color: #666; margin-bottom: 16px; }
+    .modal-btns  { display: flex; gap: 10px; margin-top: 16px; }
+    .btn-modal-confirm { flex: 1; padding: 14px; background: #1a73e8; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; font-family: inherit; }
+    .btn-modal-confirm:hover { background: #1557b0; }
+    .btn-modal-cancel  { flex: 1; padding: 14px; background: #f0f0f0; color: #555; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; font-family: inherit; }
+
+    /* Loading / Error */
+    .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .spinner-lg { display: inline-block; width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    .error-page { text-align: center; padding: 60px 20px; }
+    .error-icon { font-size: 48px; margin-bottom: 12px; }
+    .error-msg-text { font-size: 15px; color: #666; }
+
+    /* Toast & Spinner */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; white-space: pre-line; }
+    .toast.show  { opacity: 1; }
+    .toast.error { background: #c62828; }
+    .toast.success { background: #2e7d32; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>📋 簽呈收件作業</header>
+
+<div class="container" id="app">
+  <div class="loading">
+    <div class="spinner-lg"></div>
+    <div>載入文件資料中…</div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="archiveModal">
+  <div class="modal-sheet">
+    <div class="modal-title">確認歸檔</div>
+    <div class="modal-desc">文件歸檔後狀態將更新為「已歸檔」，此操作無法自動復原。</div>
+    <div class="form-group">
+      <label for="archiveUnit">操作單位 <span class="req">*</span></label>
+      <input type="text" id="archiveUnit" placeholder="請輸入您的單位名稱" maxlength="30">
+    </div>
+    <div class="form-group">
+      <label for="archiveComment">備註（選填）</label>
+      <input type="text" id="archiveComment" placeholder="選填備註說明">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-modal-cancel" onclick="closeArchiveModal()">取消</button>
+      <button class="btn-modal-confirm" id="archiveConfirmBtn" onclick="confirmArchive()">確認歸檔</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
+
+const STATUS_LABEL = { REGISTERED: '已建檔', IN_PROGRESS: '流程進行中', ARCHIVED: '已歸檔', RETURNED: '已退件' };
+const STATUS_CLASS = { REGISTERED: 'badge-registered', IN_PROGRESS: 'badge-inprogress', ARCHIVED: 'badge-archived', RETURNED: 'badge-returned' };
+const ACTION_LABEL = { RECEIVE: '✅ 收件', ARCHIVE: '📁 歸檔', RETURN: '↩️ 退件', CREATE: '📄 建檔' };
+const ACTION_DOT   = { RECEIVE: 'tl-dot-receive', ARCHIVE: 'tl-dot-archive', RETURN: 'tl-dot-return', CREATE: 'tl-dot-create' };
+
+let docData = null;
+let historyData = [];
+let docId = '';
+
+// ── 初始化 ────────────────────────────────────────────────
+(async function init() {
+  const params = new URLSearchParams(location.search);
+  docId = params.get('doc') || '';
+  if (!docId) { renderError('未提供文號，請透過掃描 QR Code 開啟此頁面。'); return; }
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getDoc&doc_id=${encodeURIComponent(docId)}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '查無此文件');
+    docData    = data.doc;
+    historyData = data.history || [];
+    renderPage();
+  } catch (e) {
+    renderError(e.message || '載入失敗，請稍後重試');
+  }
+})();
+
+// ── 渲染 ──────────────────────────────────────────────────
+function renderPage() {
+  const doc     = docData;
+  const isOver  = doc.due_date && doc.status !== 'ARCHIVED' && new Date(doc.due_date) < new Date();
+  const isDone  = doc.status === 'ARCHIVED' || doc.status === 'RETURNED';
+  const cosigns = doc.planned_cosign ? doc.planned_cosign.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  // 收件紀錄 map: unit → timestamp
+  const receivedMap = {};
+  historyData.forEach(h => {
+    if (h.action === 'RECEIVE') receivedMap[h.unit] = h.timestamp;
+  });
+
+  document.getElementById('app').innerHTML = `
+    <!-- 文件摘要 -->
+    <div class="card">
+      <span class="badge ${STATUS_CLASS[doc.status] || 'badge-registered'}">${STATUS_LABEL[doc.status] || doc.status}</span>
+      <div class="doc-title">${esc(doc.title)}</div>
+      <div class="doc-id">文號：${esc(doc.doc_id)}</div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">申請人</div>
+          <div class="meta-value">${esc(doc.applicant_name)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">申請單位</div>
+          <div class="meta-value">${esc(doc.applicant_unit)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">類別</div>
+          <div class="meta-value">${esc(doc.category)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">預計完成日</div>
+          <div class="meta-value">${esc(doc.due_date)}${isOver ? '<span class="overdue-badge">逾期</span>' : ''}</div>
+        </div>
+        ${doc.attachment_note ? `
+        <div class="meta-item meta-full">
+          <div class="meta-label">附件說明</div>
+          <div class="meta-value">${esc(doc.attachment_note)}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
+    <!-- 會簽收件 -->
+    <div class="card">
+      <div class="card-title">會簽收件</div>
+      <div class="units-grid" id="unitsGrid">
+        ${cosigns.length === 0
+          ? '<div class="no-units">（本次無需會簽）</div>'
+          : cosigns.map(u => renderUnitBtn(u, receivedMap[u], isDone)).join('')
+        }
+      </div>
+    </div>
+
+    <!-- 操作 -->
+    <div class="card" id="actionCard">
+      <div class="card-title">文件操作</div>
+      ${isDone
+        ? `<div class="no-units" style="padding:8px 0;">文件已${STATUS_LABEL[doc.status]}，無法再操作。</div>`
+        : `
+        <div class="action-row">
+          <button class="btn btn-return" id="returnBtn" onclick="toggleReturnPanel()">↩ 退件</button>
+          <button class="btn btn-archive" id="archiveBtn" onclick="openArchiveModal()">📁 歸檔</button>
+        </div>
+        <div class="return-panel" id="returnPanel">
+          <div class="form-group">
+            <label for="returnUnit">退件單位 <span class="req">*</span></label>
+            <input type="text" id="returnUnit" placeholder="請輸入您的單位名稱" maxlength="30">
+          </div>
+          <div class="form-group">
+            <label for="returnReason">退件原因 <span class="req">*</span></label>
+            <textarea id="returnReason" placeholder="請說明退件原因，以便申請人補件"></textarea>
+          </div>
+          <div class="return-btns">
+            <button class="btn-cancel" onclick="toggleReturnPanel()">取消</button>
+            <button class="btn-confirm-return" id="returnConfirmBtn" onclick="confirmReturn()">確認退件</button>
+          </div>
+        </div>
+        `
+      }
+    </div>
+
+    <!-- 歷程 -->
+    <div class="card">
+      <div class="card-title">流程歷程</div>
+      <div class="timeline" id="timeline">
+        ${renderTimeline()}
+      </div>
+    </div>
+  `;
+}
+
+function renderUnitBtn(unit, ts, isDone) {
+  if (ts) {
+    return `<button class="unit-btn unit-btn-done" disabled>
+      <span>${esc(unit)}</span>
+      <span class="unit-ts">✅ 已收件 ${formatTime(ts)}</span>
+    </button>`;
+  }
+  if (isDone) {
+    return `<button class="unit-btn unit-btn-done" disabled>
+      <span>${esc(unit)}</span>
+      <span class="unit-ts">未收件</span>
+    </button>`;
+  }
+  return `<button class="unit-btn unit-btn-pending" onclick="receiveUnit('${esc(unit)}', this)">
+    <span>${esc(unit)}</span>
+    <span class="unit-ts">點此收件</span>
+  </button>`;
+}
+
+function renderTimeline() {
+  if (!historyData.length) return '<div class="tl-empty">尚無操作記錄</div>';
+  return [...historyData].reverse().map(h => `
+    <div class="tl-item">
+      <div class="tl-dot ${ACTION_DOT[h.action] || 'tl-dot-create'}"></div>
+      <div class="tl-body">
+        <div class="tl-action">${ACTION_LABEL[h.action] || h.action}</div>
+        <div class="tl-unit">${esc(h.unit)}</div>
+        <div class="tl-time">${formatTime(h.timestamp)}</div>
+        ${h.comment ? `<div class="tl-comment">💬 ${esc(h.comment)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── 收件 ──────────────────────────────────────────────────
+async function receiveUnit(unit, btn) {
+  btn.disabled = true;
+  btn.innerHTML = `<span><span class="spinner"></span>${esc(unit)}</span><span class="unit-ts">送出中…</span>`;
+  try {
+    await callAddHistory({ doc_id: docId, unit, action: 'RECEIVE', comment: '' });
+    const ts = new Date().toISOString();
+    btn.className = 'unit-btn unit-btn-done';
+    btn.innerHTML = `<span>${esc(unit)}</span><span class="unit-ts">✅ 已收件 ${formatTime(ts)}</span>`;
+    historyData.push({ doc_id: docId, unit, action: 'RECEIVE', timestamp: ts, comment: '' });
+    document.getElementById('timeline').innerHTML = renderTimeline();
+    showToast(`${unit} 收件成功`, 'success');
+  } catch (e) {
+    btn.disabled = false;
+    btn.className = 'unit-btn unit-btn-pending';
+    btn.innerHTML = `<span>${esc(unit)}</span><span class="unit-ts">點此收件</span>`;
+    showToast(e.message || '操作失敗，請重試', 'error');
+  }
+}
+
+// ── 退件 ──────────────────────────────────────────────────
+function toggleReturnPanel() {
+  const panel = document.getElementById('returnPanel');
+  panel.classList.toggle('show');
+  if (!panel.classList.contains('show')) {
+    document.getElementById('returnUnit').value   = '';
+    document.getElementById('returnReason').value = '';
+  }
+}
+
+async function confirmReturn() {
+  const unit   = document.getElementById('returnUnit').value.trim();
+  const reason = document.getElementById('returnReason').value.trim();
+  if (!unit)   { showToast('請填寫退件單位', 'error'); return; }
+  if (!reason) { showToast('請填寫退件原因', 'error'); return; }
+
+  const btn = document.getElementById('returnConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送出中…';
+  try {
+    await callAddHistory({ doc_id: docId, unit, action: 'RETURN', comment: reason });
+    showToast('退件通知已送出，申請人將收到 Email 通知', 'success');
+    await refreshDoc();
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '確認退件';
+    showToast(e.message || '操作失敗，請重試', 'error');
+  }
+}
+
+// ── 歸檔 ──────────────────────────────────────────────────
+function openArchiveModal() {
+  document.getElementById('archiveUnit').value    = '';
+  document.getElementById('archiveComment').value = '';
+  document.getElementById('archiveModal').classList.add('show');
+}
+function closeArchiveModal() {
+  document.getElementById('archiveModal').classList.remove('show');
+}
+
+async function confirmArchive() {
+  const unit    = document.getElementById('archiveUnit').value.trim();
+  const comment = document.getElementById('archiveComment').value.trim();
+  if (!unit) { showToast('請填寫操作單位', 'error'); return; }
+
+  const btn = document.getElementById('archiveConfirmBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>歸檔中…';
+  try {
+    await callAddHistory({ doc_id: docId, unit, action: 'ARCHIVE', comment });
+    closeArchiveModal();
+    showToast('歸檔成功！申請人將收到 Email 通知', 'success');
+    await refreshDoc();
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '確認歸檔';
+    showToast(e.message || '操作失敗，請重試', 'error');
+  }
+}
+
+// ── API ───────────────────────────────────────────────────
+async function callAddHistory(payload) {
+  const res  = await fetch(`${GAS_URL}?action=addHistory`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.message || '操作失敗');
+  return data;
+}
+
+async function refreshDoc() {
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getDoc&doc_id=${encodeURIComponent(docId)}`);
+    const data = await res.json();
+    if (data.success) {
+      docData     = data.doc;
+      historyData = data.history || [];
+      renderPage();
+    }
+  } catch {}
+}
+
+// ── 工具 ──────────────────────────────────────────────────
+function renderError(msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="error-page">
+      <div class="error-icon">⚠️</div>
+      <div class="error-msg-text">${esc(msg)}</div>
+    </div>`;
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} `
+       + `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast show${type ? ' '+type : ''}`;
+  setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
