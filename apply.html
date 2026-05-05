@@ -94,6 +94,18 @@
     .email-notice { background: #e8f5e9; border: 1.5px solid #4caf50; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #2e7d32; margin: 12px 0; }
     .section-title { font-size: 13px; color: #666; font-weight: 600; margin-bottom: 8px; }
 
+    /* 進度頁 */
+    #progressPage { display: none; }
+    .progress-card { text-align: center; padding: 16px 0 8px; }
+    .progress-icon { font-size: 40px; margin-bottom: 10px; animation: bounce 1s infinite alternate; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+    .progress-title { font-size: 18px; font-weight: bold; color: #1a73e8; margin-bottom: 20px; }
+    .progress-bar-wrap { background: #e8eaed; border-radius: 10px; height: 12px; overflow: hidden; margin: 0 0 10px; }
+    .progress-bar-fill { height: 100%; width: 0%; border-radius: 10px; background: linear-gradient(90deg, #1a73e8, #34a853); transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .progress-pct { font-size: 28px; font-weight: bold; color: #1a73e8; margin: 4px 0; }
+    .progress-msg { font-size: 14px; color: #666; min-height: 20px; transition: opacity 0.3s; }
+    .progress-note { font-size: 12px; color: #aaa; margin-top: 16px; }
+
     /* Toast & Spinner */
     .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; }
     .toast.show { opacity: 1; }
@@ -210,6 +222,22 @@
       <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">
         送出建檔申請
       </button>
+    </div>
+  </div>
+
+  <!-- 進度頁 -->
+  <div id="progressPage">
+    <div class="card">
+      <div class="progress-card">
+        <div class="progress-icon">⚙️</div>
+        <div class="progress-title">建檔處理中，請稍候</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+        <div class="progress-msg" id="progressMsg">準備中...</div>
+        <div class="progress-note">Google 系統首次啟動需要約 20–40 秒，請勿離開頁面</div>
+      </div>
     </div>
   </div>
 
@@ -420,11 +448,32 @@ function validate() {
   return ok;
 }
 
+const PROGRESS_STAGES = [
+  { pct: 12, msg: '驗證資料...',          delay: 400  },
+  { pct: 28, msg: '建立文件編號...',       delay: 2000 },
+  { pct: 50, msg: '寫入系統資料庫...',     delay: 6000 },
+  { pct: 70, msg: '發送通知 Email...',     delay: 13000 },
+  { pct: 85, msg: '等待伺服器回應...',     delay: 22000 },
+  { pct: 93, msg: '即將完成，請稍候...', delay: 30000 },
+];
+
+function setProgress(pct, msg) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent  = pct + '%';
+  document.getElementById('progressMsg').textContent  = msg;
+}
+
 async function submitForm() {
   if (!validate()) return;
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>建檔中...';
+
+  // 切換到進度頁
+  document.getElementById('formPage').style.display    = 'none';
+  document.getElementById('progressPage').style.display = 'block';
+  setProgress(0, '準備中...');
+
+  const timers = PROGRESS_STAGES.map(({ pct, msg, delay }) =>
+    setTimeout(() => setProgress(pct, msg), delay)
+  );
 
   const cosigned       = [...document.querySelectorAll('input[name="cosign"]:checked')].map(el => el.value);
   const applicantEmail = document.getElementById('applicantEmail').value.trim();
@@ -447,12 +496,15 @@ async function submitForm() {
     const qs   = new URLSearchParams({ action: 'createDoc', ...payload });
     const res  = await fetch(`${GAS_URL}?${qs.toString()}`);
     const data = await res.json();
+    timers.forEach(clearTimeout);
     if (!data.success) throw new Error(data.message || '建檔失敗');
-    showSuccess(data.doc_id, data.qr_url);
+    setProgress(100, '完成！');
+    setTimeout(() => showSuccess(data.doc_id, data.qr_url), 600);
   } catch (err) {
+    timers.forEach(clearTimeout);
+    document.getElementById('progressPage').style.display = 'none';
+    document.getElementById('formPage').style.display    = 'block';
     showToast(err.message || '建檔失敗，請稍後再試', true);
-    btn.disabled = false;
-    btn.innerHTML = '送出建檔申請';
   }
 }
 
@@ -485,8 +537,10 @@ function printQR() {
 }
 
 function resetForm() {
-  document.getElementById('formPage').style.display = 'block';
-  document.getElementById('successPage').style.display = 'none';
+  document.getElementById('formPage').style.display    = 'block';
+  document.getElementById('successPage').style.display  = 'none';
+  document.getElementById('progressPage').style.display = 'none';
+  setProgress(0, '準備中...');
   const btn = document.getElementById('submitBtn');
   btn.disabled = false; btn.innerHTML = '送出建檔申請';
   document.querySelectorAll('input[type="text"],input[type="email"],input[type="date"],textarea')
