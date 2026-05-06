@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簽呈進度查詢</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 16px 20px; text-align: center; font-size: 18px; font-weight: bold; }
+    .container { max-width: 600px; margin: 24px auto; padding: 0 16px 48px; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    .card-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+
+    /* 狀態徽章 */
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+    .badge-registered { background: #e3f2fd; color: #1565c0; }
+    .badge-inprogress { background: #fff3e0; color: #e65100; }
+    .badge-archived   { background: #e8f5e9; color: #2e7d32; }
+    .badge-returned   { background: #ffebee; color: #c62828; }
+
+    /* 文件摘要 */
+    .doc-title { font-size: 20px; font-weight: bold; margin: 10px 0 6px; line-height: 1.4; }
+    .doc-id    { font-size: 13px; color: #888; margin-bottom: 14px; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .meta-item { background: #f8f9fa; border-radius: 8px; padding: 8px 10px; }
+    .meta-label { font-size: 11px; color: #999; margin-bottom: 2px; }
+    .meta-value { font-size: 14px; font-weight: 600; color: #333; }
+    .meta-full  { grid-column: 1 / -1; }
+
+    /* 逾期警示 */
+    .overdue-banner {
+      background: #ffebee; border: 1.5px solid #ef9a9a; border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #c62828;
+      font-weight: 600;
+    }
+    /* 退件提示 */
+    .returned-banner {
+      background: #fff3e0; border: 1.5px solid #ffb74d; border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #e65100;
+    }
+
+    /* 流程進度步驟 */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step  { display: flex; gap: 14px; position: relative; padding-bottom: 18px; }
+    .step:last-child { padding-bottom: 0; }
+    .step-left { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
+    .step-dot  {
+      width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-size: 14px; font-weight: bold; flex-shrink: 0; z-index: 1;
+    }
+    .step-dot-done    { background: #1a73e8; color: #fff; }
+    .step-dot-current { background: #fff3e0; border: 2px solid #e65100; color: #e65100; }
+    .step-dot-pending { background: #f0f0f0; border: 2px solid #ddd; color: #bbb; }
+    .step-dot-return  { background: #ffebee; border: 2px solid #c62828; color: #c62828; }
+    .step-dot-archive { background: #e8f5e9; border: 2px solid #2e7d32; color: #2e7d32; }
+    .step-line {
+      width: 2px; background: #e0e0e0; flex: 1; margin-top: 2px;
+    }
+    .step-line-done { background: #1a73e8; }
+    .step-body { padding-top: 3px; flex: 1; min-width: 0; }
+    .step-name { font-size: 15px; font-weight: 600; color: #333; }
+    .step-name-done    { color: #1a73e8; }
+    .step-name-pending { color: #aaa; }
+    .step-name-return  { color: #c62828; }
+    .step-name-archive { color: #2e7d32; }
+    .step-ts   { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .step-tag  { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-top: 4px; }
+    .step-tag-done    { background: #e3f2fd; color: #1565c0; }
+    .step-tag-current { background: #fff3e0; color: #e65100; }
+    .step-tag-pending { background: #f5f5f5; color: #aaa; }
+    .step-tag-return  { background: #ffebee; color: #c62828; }
+    .step-tag-archive { background: #e8f5e9; color: #2e7d32; }
+
+    /* 歷程時間軸 */
+    .timeline { margin-top: 4px; }
+    .tl-item  { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-dot   { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .tl-dot-receive { background: #1a73e8; }
+    .tl-dot-archive { background: #2e7d32; }
+    .tl-dot-return  { background: #c62828; }
+    .tl-dot-create  { background: #9e9e9e; }
+    .tl-body  { flex: 1; }
+    .tl-action { font-size: 14px; font-weight: 600; }
+    .tl-unit   { font-size: 13px; color: #555; }
+    .tl-time   { font-size: 12px; color: #aaa; margin-top: 2px; }
+    .tl-comment { font-size: 13px; color: #c62828; margin-top: 4px; background: #ffebee; padding: 6px 8px; border-radius: 6px; }
+    .tl-empty  { color: #bbb; font-size: 13px; text-align: center; padding: 12px 0; }
+
+    /* Loading / Error */
+    .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .spinner-lg { display: inline-block; width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    .error-page { text-align: center; padding: 60px 20px; }
+    .error-icon { font-size: 48px; margin-bottom: 12px; }
+    .error-msg-text { font-size: 15px; color: #666; }
+    .no-param-hint { font-size: 14px; color: #888; margin-top: 8px; line-height: 1.6; }
+
+    /* 重新整理按鈕 */
+    .btn-refresh {
+      display: block; width: 100%; margin-top: 8px; padding: 12px;
+      background: #f0f0f0; color: #555; border: none; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
+    }
+    .btn-refresh:hover { background: #e0e0e0; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>📋 簽呈進度查詢</header>
+
+<div class="container" id="app">
+  <div class="loading">
+    <div class="spinner-lg"></div>
+    <div>載入文件資料中…</div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
+
+const STATUS_LABEL = { REGISTERED: '已建檔', IN_PROGRESS: '流程進行中', ARCHIVED: '已歸檔', RETURNED: '已退件' };
+const STATUS_CLASS = { REGISTERED: 'badge-registered', IN_PROGRESS: 'badge-inprogress', ARCHIVED: 'badge-archived', RETURNED: 'badge-returned' };
+const ACTION_LABEL = { RECEIVE: '✅ 收件', ARCHIVE: '📁 歸檔', RETURN: '↩️ 退件', CREATE: '📄 建檔', FORCE_UPDATE: '⚙️ 管理員更新' };
+const ACTION_DOT   = { RECEIVE: 'tl-dot-receive', ARCHIVE: 'tl-dot-archive', RETURN: 'tl-dot-return', CREATE: 'tl-dot-create', FORCE_UPDATE: 'tl-dot-create' };
+
+let docData     = null;
+let historyData = [];
+let docId       = '';
+
+(async function init() {
+  const params = new URLSearchParams(location.search);
+  docId = params.get('doc') || params.get('id') || '';
+
+  if (!docId) {
+    renderNoParam();
+    return;
+  }
+
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getDoc&doc_id=${encodeURIComponent(docId)}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '查無此文件');
+    docData     = data.doc;
+    historyData = data.history || [];
+    renderPage();
+  } catch (e) {
+    renderError(e.message || '載入失敗，請稍後重試');
+  }
+})();
+
+// ── 渲染主頁面 ────────────────────────────────────────────
+function renderPage() {
+  const doc     = docData;
+  const today   = new Date(); today.setHours(0,0,0,0);
+  const isOver  = doc.due_date && doc.status !== 'ARCHIVED' && new Date(doc.due_date) < today;
+  const cosigns = doc.planned_route ? doc.planned_route.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  // 最後一次退件時間（用於判斷當前輪次的收件狀態）
+  const lastReturnTs = historyData
+    .filter(h => h.action === 'RETURN')
+    .reduce((latest, h) => h.timestamp > latest ? h.timestamp : latest, '');
+
+  // 當前輪次的收件紀錄
+  const receivedMap = {};
+  historyData.forEach(h => {
+    if (h.action === 'RECEIVE' && h.timestamp > lastReturnTs) {
+      receivedMap[h.actor_unit] = h.timestamp;
+    }
+  });
+
+  // 歸檔時間
+  const archiveRecord = [...historyData].reverse().find(h => h.action === 'ARCHIVE');
+
+  document.getElementById('app').innerHTML = `
+
+    ${isOver ? `<div class="overdue-banner">⚠️ 此文件已超過預計完成日，請留意進度。</div>` : ''}
+    ${doc.status === 'RETURNED' ? `<div class="returned-banner">↩️ 此文件已退件，等待申請人補件後重新送件。</div>` : ''}
+
+    <!-- 文件摘要 -->
+    <div class="card">
+      <span class="badge ${STATUS_CLASS[doc.status] || 'badge-registered'}">${STATUS_LABEL[doc.status] || doc.status}</span>
+      <div class="doc-title">${esc(doc.title)}</div>
+      <div class="doc-id">文號：${esc(doc.doc_id)}</div>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="meta-label">申請人</div>
+          <div class="meta-value">${esc(doc.applicant_name)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">申請單位</div>
+          <div class="meta-value">${esc(doc.applicant_unit)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">類別</div>
+          <div class="meta-value">${esc(doc.category)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">預計完成日</div>
+          <div class="meta-value">${esc(doc.due_date)}${isOver ? ' ⚠️' : ''}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">建立時間</div>
+          <div class="meta-value">${formatDate(doc.created_at)}</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">最後更新</div>
+          <div class="meta-value">${formatDate(doc.updated_at)}</div>
+        </div>
+        ${doc.attachment_note ? `
+        <div class="meta-item meta-full">
+          <div class="meta-label">附件說明</div>
+          <div class="meta-value">${esc(doc.attachment_note)}</div>
+        </div>` : ''}
+      </div>
+    </div>
+
+    <!-- 流程進度 -->
+    <div class="card">
+      <div class="card-title">流程進度</div>
+      <div class="steps">
+        ${renderSteps(cosigns, receivedMap, lastReturnTs, archiveRecord, doc.status)}
+      </div>
+    </div>
+
+    <!-- 歷程時間軸 -->
+    <div class="card">
+      <div class="card-title">操作歷程</div>
+      <div class="timeline">
+        ${renderTimeline()}
+      </div>
+    </div>
+
+    <button class="btn-refresh" onclick="location.reload()">🔄 重新整理</button>
+  `;
+}
+
+// ── 流程步驟 ──────────────────────────────────────────────
+function renderSteps(cosigns, receivedMap, lastReturnTs, archiveRecord, status) {
+  const steps = [];
+
+  // 建檔（第一步，永遠完成）
+  const createRecord = historyData.find(h => h.action === 'CREATE') || { timestamp: docData.created_at };
+  steps.push({ type: 'done', icon: '📄', name: '建檔', ts: docData.created_at });
+
+  // 退件歷程插入（如果有退件，顯示在流程中）
+  const returns = historyData.filter(h => h.action === 'RETURN').sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+
+  // 會簽與主簽單位
+  cosigns.forEach(unit => {
+    const ts = receivedMap[unit];
+    if (ts) {
+      steps.push({ type: 'done', icon: '✅', name: unit, ts });
+    } else if (status === 'ARCHIVED') {
+      steps.push({ type: 'pending', icon: '—', name: unit, ts: null });
+    } else {
+      steps.push({ type: 'pending', icon: '⏳', name: unit, ts: null });
+    }
+  });
+
+  // 退件（如果有）
+  if (returns.length > 0) {
+    const lastReturn = returns[returns.length - 1];
+    steps.push({ type: 'return', icon: '↩', name: `退件（${esc(lastReturn.actor_unit)}）`, ts: lastReturn.timestamp, comment: lastReturn.comment });
+  }
+
+  // 歸檔
+  if (status === 'ARCHIVED' && archiveRecord) {
+    steps.push({ type: 'archive', icon: '📁', name: '歸檔完成', ts: archiveRecord.timestamp });
+  } else if (status !== 'ARCHIVED') {
+    steps.push({ type: 'pending', icon: '📁', name: '歸檔', ts: null });
+  }
+
+  return steps.map((s, i) => {
+    const isLast = i === steps.length - 1;
+    const dotCls  = `step-dot step-dot-${s.type}`;
+    const nameCls = `step-name step-name-${s.type}`;
+    const tagMap  = { done: '已完成', pending: '待處理', current: '進行中', return: '已退件', archive: '已歸檔' };
+    const lineCls = `step-line${s.type === 'done' || s.type === 'archive' ? ' step-line-done' : ''}`;
+    return `
+      <div class="step">
+        <div class="step-left">
+          <div class="${dotCls}">${s.icon}</div>
+          ${isLast ? '' : `<div class="${lineCls}"></div>`}
+        </div>
+        <div class="step-body">
+          <div class="${nameCls}">${s.name}</div>
+          ${s.ts ? `<div class="step-ts">${formatTime(s.ts)}</div>` : ''}
+          <span class="step-tag step-tag-${s.type}">${tagMap[s.type] || ''}</span>
+          ${s.comment ? `<div class="tl-comment" style="margin-top:6px;">💬 ${esc(s.comment)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 歷程時間軸 ────────────────────────────────────────────
+function renderTimeline() {
+  if (!historyData.length) return '<div class="tl-empty">尚無操作記錄</div>';
+  return [...historyData].reverse().map(h => `
+    <div class="tl-item">
+      <div class="tl-dot ${ACTION_DOT[h.action] || 'tl-dot-create'}"></div>
+      <div class="tl-body">
+        <div class="tl-action">${ACTION_LABEL[h.action] || h.action}</div>
+        <div class="tl-unit">${esc(h.actor_unit || '')}</div>
+        <div class="tl-time">${formatTime(h.timestamp)}</div>
+        ${h.comment ? `<div class="tl-comment">💬 ${esc(h.comment)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── 無文號提示 ────────────────────────────────────────────
+function renderNoParam() {
+  document.getElementById('app').innerHTML = `
+    <div class="error-page">
+      <div class="error-icon">🔍</div>
+      <div class="error-msg-text">請透過 Email 中的連結開啟此頁面</div>
+      <div class="no-param-hint">
+        此頁面需要文號才能顯示進度。<br>
+        請從建檔成功通知 Email 中點擊「查看進度」連結。
+      </div>
+    </div>`;
+}
+
+function renderError(msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="error-page">
+      <div class="error-icon">⚠️</div>
+      <div class="error-msg-text">${esc(msg)}</div>
+    </div>`;
+}
+
+// ── 工具 ──────────────────────────────────────────────────
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} `
+       + `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
