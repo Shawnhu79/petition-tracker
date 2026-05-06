@@ -3,587 +3,348 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>簽呈申請建檔</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <title>簽呈追蹤儀表板</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f5f5f5; color: #333; }
-    header { background: #1a73e8; color: #fff; padding: 16px 20px; text-align: center; font-size: 18px; font-weight: bold; }
-    .container { max-width: 600px; margin: 24px auto; padding: 0 16px; }
-    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .form-group { margin-bottom: 18px; }
-    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #444; }
-    label .req { color: #e53935; margin-left: 2px; }
-    input[type="text"], input[type="email"], input[type="date"], select, textarea {
-      width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px;
-      font-size: 15px; font-family: inherit; transition: border-color 0.2s;
+    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .header-title { font-size: 18px; font-weight: bold; }
+    .header-refresh { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .header-refresh:hover { background: rgba(255,255,255,0.3); }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 48px; }
+
+    /* 統計卡片 */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 540px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); text-align: center; cursor: pointer; transition: box-shadow 0.15s; }
+    .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .stat-card.active { outline: 2px solid #1a73e8; }
+    .stat-num  { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #888; font-weight: 600; }
+    .stat-total    .stat-num { color: #1a73e8; }
+    .stat-progress .stat-num { color: #e65100; }
+    .stat-overdue  .stat-num { color: #c62828; }
+    .stat-month    .stat-num { color: #2e7d32; }
+
+    /* 篩選區 */
+    .filter-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .search-box {
+      flex: 1; min-width: 180px; padding: 10px 14px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
     }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #1a73e8; }
-    input.error, select.error { border-color: #e53935; }
-    .error-msg { color: #e53935; font-size: 12px; margin-top: 4px; display: none; }
-    .error-msg.show { display: block; }
-    textarea { resize: vertical; min-height: 80px; }
-    .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    .search-box:focus { outline: none; border-color: #1a73e8; }
+    .applicant-select {
+      flex: 1; min-width: 160px; padding: 10px 12px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff;
+    }
+    .applicant-select:focus { outline: none; border-color: #1a73e8; }
 
-    /* 會簽單位 checkbox */
-    .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-    .checkbox-item { display: flex; align-items: center; gap: 6px; background: #f0f4ff; border: 1.5px solid #c5d0f0; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 14px; transition: all 0.15s; user-select: none; }
-    .checkbox-item input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
-    .checkbox-item.checked { background: #1a73e8; border-color: #1a73e8; color: #fff; }
+    /* 狀態 pills */
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid #e0e0e0; background: #fff; color: #666;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .pill:hover  { border-color: #1a73e8; color: #1a73e8; }
+    .pill.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    .pill.pill-overdue.active  { background: #c62828; border-color: #c62828; }
+    .pill.pill-returned.active { background: #e65100; border-color: #e65100; }
+    .pill.pill-archived.active { background: #2e7d32; border-color: #2e7d32; }
 
-    /* 主簽鏈 */
-    .main-chain { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-    .chain-unit { background: #e8f0fe; border: 1.5px solid #1a73e8; color: #1a73e8; border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
-    .chain-arrow { color: #999; font-size: 14px; }
+    /* 結果計數 */
+    .result-count { font-size: 13px; color: #888; margin-bottom: 10px; padding: 0 2px; }
 
-    /* 通知名單區 */
-    .notify-section { background: #fafafa; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 16px; }
-    .tags-container { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; padding: 4px 0; margin: 8px 0; align-items: center; }
-    .tag { display: flex; align-items: center; gap: 4px; background: #e8f0fe; border: 1px solid #1a73e8; color: #1a73e8; border-radius: 20px; padding: 4px 10px; font-size: 13px; }
-    .tag button { background: none; border: none; cursor: pointer; color: #1a73e8; font-size: 14px; padding: 0; line-height: 1; margin-left: 2px; }
-    .tag button:hover { color: #c62828; }
-    .tags-empty { font-size: 13px; color: #bbb; }
-    .book-panel { border: 1.5px solid #e0e7ff; border-radius: 8px; overflow: hidden; margin-top: 10px; }
-    .book-header { display: flex; justify-content: space-between; align-items: center; background: #f0f4ff; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #3d5afe; }
-    .btn-link { background: none; border: none; cursor: pointer; color: #1a73e8; font-size: 13px; font-weight: 600; padding: 0; }
-    .btn-link:hover { text-decoration: underline; }
-    .contacts-list { max-height: 220px; overflow-y: auto; }
-    .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-    .contact-item:last-child { border-bottom: none; }
-    .contact-label { display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1; }
-    .contact-label input { width: auto; margin: 0; cursor: pointer; }
-    .contact-name { font-weight: 600; color: #333; }
-    .contact-email-text { color: #888; font-size: 12px; margin-left: 2px; }
-    .btn-del-contact { background: none; border: none; cursor: pointer; color: #ccc; font-size: 16px; padding: 0 4px; flex-shrink: 0; }
-    .btn-del-contact:hover { color: #e53935; }
-    .no-contacts { padding: 14px 12px; color: #aaa; font-size: 13px; text-align: center; }
-    .add-contact-form { border-top: 1.5px solid #e0e7ff; padding: 12px; background: #f8fbff; display: none; }
-    .add-contact-form.show { display: block; }
-    .add-contact-row { display: flex; gap: 8px; margin-bottom: 8px; }
-    .add-contact-row input { flex: 1; font-size: 14px; padding: 8px 10px; }
-    .add-contact-btns { display: flex; gap: 8px; justify-content: flex-end; }
-    .one-time-row { display: flex; gap: 8px; margin-top: 10px; }
-    .one-time-row input { flex: 1; }
-    .btn-add { padding: 10px 16px; background: #1a73e8; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; }
-    .btn-add:hover { background: #1557b0; }
-    .btn-sm { padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: 600; border: none; }
-    .btn-sm-primary { background: #1a73e8; color: #fff; }
-    .btn-sm-cancel { background: #f0f0f0; color: #555; }
+    /* 文件卡片 */
+    .doc-card {
+      background: #fff; border-radius: 12px; padding: 16px 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 10px;
+      transition: box-shadow 0.15s; border-left: 4px solid transparent;
+    }
+    .doc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
+    .doc-card.status-in-progress { border-left-color: #e65100; }
+    .doc-card.status-registered  { border-left-color: #1a73e8; }
+    .doc-card.status-archived    { border-left-color: #2e7d32; }
+    .doc-card.status-returned    { border-left-color: #c62828; }
+    .doc-card.is-overdue         { background: #fffde7; }
 
-    /* 共用按鈕 */
-    .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-family: inherit; }
-    .btn-primary { background: #1a73e8; color: #fff; }
-    .btn-primary:hover { background: #1557b0; }
-    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-    .btn-secondary { background: #f0f4ff; color: #1a73e8; border: 1.5px solid #1a73e8; }
-    .btn-secondary:hover { background: #dce8ff; }
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .card-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-registered { background: #e3f2fd; color: #1565c0; }
+    .badge-inprogress { background: #fff3e0; color: #e65100; }
+    .badge-archived   { background: #e8f5e9; color: #2e7d32; }
+    .badge-returned   { background: #ffebee; color: #c62828; }
+    .badge-overdue    { background: #ffebee; color: #c62828; }
+    .badge-category   { background: #f3e5f5; color: #6a1b9a; }
 
-    /* 成功頁 */
-    #successPage { display: none; }
-    .success-header { text-align: center; padding: 24px 0 16px; }
-    .success-icon { font-size: 48px; }
-    .success-title { font-size: 22px; font-weight: bold; margin: 8px 0 4px; color: #1a73e8; }
-    .doc-id-box { background: #e8f0fe; border: 2px solid #1a73e8; border-radius: 10px; padding: 14px; text-align: center; margin: 16px 0; }
-    .doc-id-label { font-size: 12px; color: #666; margin-bottom: 4px; }
-    .doc-id-value { font-size: 28px; font-weight: bold; color: #1a73e8; letter-spacing: 2px; }
-    .qr-section { text-align: center; margin: 20px 0; }
-    .qr-section canvas { border: 2px solid #eee; border-radius: 8px; padding: 8px; }
-    .qr-hint { font-size: 12px; color: #888; margin-top: 8px; }
-    .btn-row { display: flex; gap: 10px; margin-top: 12px; }
-    .btn-row .btn { width: auto; flex: 1; font-size: 14px; padding: 10px; }
-    .email-notice { background: #e8f5e9; border: 1.5px solid #4caf50; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #2e7d32; margin: 12px 0; }
-    .section-title { font-size: 13px; color: #666; font-weight: 600; margin-bottom: 8px; }
+    .card-date { font-size: 12px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+    .card-date.overdue { color: #c62828; font-weight: 600; }
 
-    /* 進度頁 */
-    #progressPage { display: none; }
-    .progress-card { text-align: center; padding: 16px 0 8px; }
-    .progress-icon { font-size: 40px; margin-bottom: 10px; animation: bounce 1s infinite alternate; }
-    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
-    .progress-title { font-size: 18px; font-weight: bold; color: #1a73e8; margin-bottom: 20px; }
-    .progress-bar-wrap { background: #e8eaed; border-radius: 10px; height: 12px; overflow: hidden; margin: 0 0 10px; }
-    .progress-bar-fill { height: 100%; width: 0%; border-radius: 10px; background: linear-gradient(90deg, #1a73e8, #34a853); transition: width 0.6s cubic-bezier(.4,0,.2,1); }
-    .progress-pct { font-size: 28px; font-weight: bold; color: #1a73e8; margin: 4px 0; }
-    .progress-msg { font-size: 14px; color: #666; min-height: 20px; transition: opacity 0.3s; }
-    .progress-note { font-size: 12px; color: #aaa; margin-top: 16px; }
+    .card-title { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 6px; line-height: 1.4; }
 
-    /* Toast & Spinner */
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; }
-    .toast.show { opacity: 1; }
-    .toast.error { background: #c62828; }
-    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    .card-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: #666; margin-bottom: 8px; }
+    .card-meta span::before { margin-right: 3px; }
+
+    .card-route { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .route-unit { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f0f0; color: #555; }
+
+    .card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .card-docid { font-size: 12px; color: #bbb; }
+    .btn-detail {
+      font-size: 13px; font-weight: 600; color: #1a73e8; text-decoration: none;
+      padding: 6px 12px; border-radius: 6px; border: 1.5px solid #1a73e8; background: #fff;
+      transition: all 0.15s;
+    }
+    .btn-detail:hover { background: #e8f0fe; }
+
+    /* 空狀態 */
+    .empty-state { text-align: center; padding: 48px 20px; color: #bbb; }
+    .empty-icon  { font-size: 40px; margin-bottom: 10px; }
+    .empty-text  { font-size: 15px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .spinner-lg { display: inline-block; width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    .error-banner { background: #ffebee; border: 1.5px solid #ef9a9a; border-radius: 10px; padding: 14px 16px; color: #c62828; font-size: 14px; margin-bottom: 16px; }
+
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-<header>📄 簽呈申請建檔</header>
+<header>
+  <div class="header-title">📊 簽呈追蹤儀表板</div>
+  <button class="header-refresh" onclick="loadData()">🔄 重新整理</button>
+</header>
 
 <div class="container">
-
-  <!-- 申請表單 -->
-  <div id="formPage">
-    <div class="card">
-
-      <div class="form-group">
-        <label for="applicantName">申請人姓名 <span class="req">*</span></label>
-        <input type="text" id="applicantName" maxlength="20" placeholder="請輸入姓名">
-        <div class="error-msg" id="err-applicantName">請填寫申請人姓名</div>
-      </div>
-
-      <div class="form-group">
-        <label for="applicantUnit">申請人單位 <span class="req">*</span></label>
-        <input type="text" id="applicantUnit" maxlength="20" placeholder="請輸入所屬單位">
-        <div class="error-msg" id="err-applicantUnit">請填寫申請人單位</div>
-      </div>
-
-      <div class="form-group">
-        <label for="applicantEmail">申請人 Email <span class="req">*</span></label>
-        <input type="email" id="applicantEmail" placeholder="用於接收進度通知">
-        <div class="error-msg" id="err-applicantEmail">請輸入有效的 Email 地址</div>
-      </div>
-
-      <!-- 通知名單 -->
-      <div class="form-group">
-        <label>附加通知對象（選填）</label>
-        <div class="notify-section">
-          <div class="hint" style="margin-bottom:6px;">申請人 Email 預設會收到通知，可在此勾選其他收件人</div>
-
-          <div class="tags-container" id="emailTags">
-            <span class="tags-empty" id="tagsEmpty">尚未選取附加通知對象</span>
-          </div>
-
-          <div class="book-panel">
-            <div class="book-header">
-              <span>📒 通訊錄</span>
-              <button type="button" class="btn-link" onclick="toggleAddForm()">＋ 新增聯絡人</button>
-            </div>
-            <div id="contactsList" class="contacts-list"></div>
-            <div class="add-contact-form" id="addContactForm">
-              <div class="add-contact-row">
-                <input type="text" id="newContactName" placeholder="姓名">
-                <input type="email" id="newContactEmail" placeholder="Email">
-              </div>
-              <div class="add-contact-btns">
-                <button type="button" class="btn-sm btn-sm-cancel" onclick="toggleAddForm()">取消</button>
-                <button type="button" class="btn-sm btn-sm-primary" onclick="saveNewContact()">儲存至通訊錄</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="one-time-row">
-            <input type="email" id="oneTimeEmail" placeholder="單次使用的 Email（不存入通訊錄）">
-            <button type="button" class="btn-add" onclick="addOneTime()">加入</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="title">簽呈主旨 <span class="req">*</span></label>
-        <input type="text" id="title" maxlength="200" placeholder="請輸入簽呈主旨">
-        <div class="error-msg" id="err-title">請填寫簽呈主旨</div>
-      </div>
-
-      <div class="form-group">
-        <label for="category">簽呈類別 <span class="req">*</span></label>
-        <select id="category">
-          <option value="">請選擇類別</option>
-          <option value="合約會辦">合約會辦</option>
-          <option value="簽呈">簽呈</option>
-        </select>
-        <div class="error-msg" id="err-category">請選擇簽呈類別</div>
-      </div>
-
-      <div class="form-group">
-        <label>需會簽單位</label>
-        <div class="hint">勾選本次需要會簽的單位（可多選）</div>
-        <div class="checkbox-group" id="cosignGroup">
-          <div style="color:#999;font-size:13px;">載入中...</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>主簽鏈（固定，不可更改）</label>
-        <div class="main-chain" id="mainChain">
-          <div style="color:#999;font-size:13px;">載入中...</div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="dueDate">預計完成日期 <span class="req">*</span></label>
-        <input type="date" id="dueDate">
-        <div class="error-msg" id="err-dueDate">請選擇預計完成日期</div>
-      </div>
-
-      <div class="form-group">
-        <label for="attachmentNote">附件說明</label>
-        <textarea id="attachmentNote" placeholder="說明實體附件內容（選填）"></textarea>
-      </div>
-
-      <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">
-        送出建檔申請
-      </button>
+  <div id="root">
+    <div class="loading">
+      <div class="spinner-lg"></div>
+      <div>載入資料中…</div>
     </div>
   </div>
-
-  <!-- 進度頁 -->
-  <div id="progressPage">
-    <div class="card">
-      <div class="progress-card">
-        <div class="progress-icon">⚙️</div>
-        <div class="progress-title">建檔處理中，請稍候</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="progressFill"></div>
-        </div>
-        <div class="progress-pct" id="progressPct">0%</div>
-        <div class="progress-msg" id="progressMsg">準備中...</div>
-        <div class="progress-note">Google 系統首次啟動需要約 20–40 秒，請勿離開頁面</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 建檔成功頁 -->
-  <div id="successPage">
-    <div class="card">
-      <div class="success-header">
-        <div class="success-icon">✅</div>
-        <div class="success-title">建檔成功！</div>
-        <div style="font-size:14px;color:#666;">請列印 QR Code 並附於實體文件上</div>
-      </div>
-      <div class="doc-id-box">
-        <div class="doc-id-label">系統文號</div>
-        <div class="doc-id-value" id="resultDocId">—</div>
-      </div>
-      <div class="email-notice">📧 通知 Email 已寄出給所有指定收件人。</div>
-      <div class="qr-section">
-        <div class="section-title">QR Code（各關卡秘書掃碼收件用）</div>
-        <div id="qrContainer" style="display:inline-block;border:2px solid #eee;border-radius:8px;padding:8px;"></div>
-        <div class="qr-hint">請列印或截圖後附於實體文件封面</div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="downloadQR()">⬇ 下載 PNG</button>
-          <button class="btn btn-secondary" onclick="printQR()">🖨 列印</button>
-        </div>
-      </div>
-      <button class="btn btn-primary" style="margin-top:16px;" onclick="resetForm()">再建一筆</button>
-    </div>
-  </div>
-
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v1.4.2</div>
-<div class="toast" id="toast"></div>
 
 <script>
-const GAS_URL  = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
-const BOOK_KEY = 'petition_contacts';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
+const DOC_PAGE = 'doc.html';
+const STATUS_PAGE = 'status.html';
 
-// 預設通訊錄（第一次開啟時自動載入）
-const DEFAULT_CONTACTS = [
-  { name: '卓子杰', email: 'spectaculartau@gmail.com' },
-  { name: '張紫涵', email: 'shedy8896@gmail.com' },
-  { name: '林育德', email: 'jasper.fongyi@gmail.com' },
-  { name: '呂佳益', email: 'a0926644565@hotmail.com' },
-  { name: '戴秀惠', email: 'jessietai0638@gmail.com' },
-];
+const STATUS_LABEL = { REGISTERED: '已建檔', IN_PROGRESS: '進行中', ARCHIVED: '已歸檔', RETURNED: '已退件' };
+const STATUS_CLASS = { REGISTERED: 'badge-registered', IN_PROGRESS: 'badge-inprogress', ARCHIVED: 'badge-archived', RETURNED: 'badge-returned' };
+const CARD_CLASS  = { REGISTERED: 'status-registered', IN_PROGRESS: 'status-in-progress', ARCHIVED: 'status-archived', RETURNED: 'status-returned' };
 
-const additionalEmails = new Map(); // email → display label
+let allDocs        = [];
+let activeFilter   = 'ALL';
+let searchKeyword  = '';
+let applicantFilter = '';
 
-// ── 通訊錄 ────────────────────────────────────────────────
-function loadContacts() { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[]'); }
-function saveContacts(c) { localStorage.setItem(BOOK_KEY, JSON.stringify(c)); }
-
-function renderContacts() {
-  // 第一次開啟（localStorage 無資料）→ 載入預設名單
-  if (!localStorage.getItem(BOOK_KEY)) {
-    saveContacts(DEFAULT_CONTACTS);
-  }
-  const contacts = loadContacts();
-  const list = document.getElementById('contactsList');
-  if (!contacts.length) {
-    list.innerHTML = '<div class="no-contacts">尚無聯絡人，點右上角「＋ 新增聯絡人」</div>';
-    return;
-  }
-  list.innerHTML = contacts.map((c, i) => `
-    <div class="contact-item" id="ci-${i}">
-      <label class="contact-label">
-        <input type="checkbox" onchange="toggleContact('${esc(c.email)}','${esc(c.name)}',this)">
-        <span class="contact-name">${esc(c.name)}</span>
-        <span class="contact-email-text">${esc(c.email)}</span>
-      </label>
-      <button class="btn-del-contact" onclick="deleteContact(${i})" title="從通訊錄移除">✕</button>
-    </div>
-  `).join('');
-}
-
-function toggleContact(email, name, cb) {
-  if (cb.checked) addEmailTag(email, name);
-  else removeEmailTag(email);
-}
-
-function deleteContact(idx) {
-  const contacts = loadContacts();
-  const removed  = contacts.splice(idx, 1)[0];
-  saveContacts(contacts);
-  if (removed) removeEmailTag(removed.email);
-  renderContacts();
-}
-
-function toggleAddForm() {
-  const f = document.getElementById('addContactForm');
-  f.classList.toggle('show');
-  if (!f.classList.contains('show')) {
-    document.getElementById('newContactName').value  = '';
-    document.getElementById('newContactEmail').value = '';
-  }
-}
-
-function saveNewContact() {
-  const name  = document.getElementById('newContactName').value.trim();
-  const email = document.getElementById('newContactEmail').value.trim();
-  if (!name)               { showToast('請輸入姓名', true); return; }
-  if (!isValidEmail(email)) { showToast('請輸入有效 Email', true); return; }
-  const contacts = loadContacts();
-  if (contacts.some(c => c.email === email)) { showToast('此 Email 已在通訊錄中', true); return; }
-  contacts.push({ name, email });
-  saveContacts(contacts);
-  renderContacts();
-  toggleAddForm();
-  showToast(`✅ 已新增 ${name} 至通訊錄`);
-}
-
-// ── Email Tags ────────────────────────────────────────────
-function addEmailTag(email, label) {
-  if (additionalEmails.has(email)) return;
-  additionalEmails.set(email, label || email);
-  renderTags();
-}
-
-function removeEmailTag(email) {
-  additionalEmails.delete(email);
-  loadContacts().forEach((c, i) => {
-    if (c.email === email) {
-      const cb = document.querySelector(`#ci-${i} input`);
-      if (cb) cb.checked = false;
-    }
-  });
-  renderTags();
-}
-
-function renderTags() {
-  const container = document.getElementById('emailTags');
-  const empty     = document.getElementById('tagsEmpty');
-  container.innerHTML = '';
-  if (!additionalEmails.size) {
-    empty.style.display = '';
-    container.appendChild(empty);
-    return;
-  }
-  empty.style.display = 'none';
-  container.appendChild(empty);
-  additionalEmails.forEach((label, email) => {
-    const tag = document.createElement('div');
-    tag.className     = 'tag';
-    tag.dataset.email = email;
-    tag.innerHTML     = `<span>${esc(label)}</span><button type="button" onclick="removeEmailTag('${esc(email)}')">✕</button>`;
-    container.appendChild(tag);
-  });
-}
-
-function addOneTime() {
-  const input = document.getElementById('oneTimeEmail');
-  const email = input.value.trim();
-  if (!isValidEmail(email)) { showToast('請輸入有效的 Email 格式', true); return; }
-  addEmailTag(email, email);
-  input.value = '';
-  showToast(`已加入：${email}`);
-}
-
-// ── 載入設定 ──────────────────────────────────────────────
-async function loadSettings() {
+// ── 載入資料 ──────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('root').innerHTML = `
+    <div class="loading"><div class="spinner-lg"></div><div>載入資料中…</div></div>`;
   try {
-    const res  = await fetch(`${GAS_URL}?action=getSettings`);
+    const res  = await fetch(`${GAS_URL}?action=getDashboard`);
     const data = await res.json();
-    if (!data.success) throw new Error();
-    const group = document.getElementById('cosignGroup');
-    if (data.cosign_units && data.cosign_units.length > 0) {
-      group.innerHTML = data.cosign_units.map(u => `
-        <label class="checkbox-item" onclick="toggleCheck(this)">
-          <input type="checkbox" name="cosign" value="${u}"> ${u}
-        </label>
-      `).join('');
-    } else {
-      group.innerHTML = '<div style="color:#999;font-size:13px;">（無會簽單位）</div>';
-    }
-    const chain = document.getElementById('mainChain');
-    if (data.main_chain && data.main_chain.length > 0) {
-      chain.innerHTML = data.main_chain.map((u, i) =>
-        `<span class="chain-unit">${u}</span>` +
-        (i < data.main_chain.length - 1 ? '<span class="chain-arrow">→</span>' : '')
-      ).join('');
-    }
-  } catch { showToast('載入設定失敗，請重新整理頁面', true); }
+    if (!data.success) throw new Error(data.message || '載入失敗');
+    allDocs = data.docs || [];
+    renderAll();
+  } catch (e) {
+    document.getElementById('root').innerHTML =
+      `<div class="error-banner">⚠️ ${e.message || '無法連接伺服器，請稍後重試'}</div>`;
+  }
 }
 
-function toggleCheck(label) {
-  const cb = label.querySelector('input');
-  cb.checked = !cb.checked;
-  label.classList.toggle('checked', cb.checked);
-}
-
-// ── 驗證與送出 ────────────────────────────────────────────
-function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-
-function validate() {
-  let ok = true;
-  [
-    { id: 'applicantName',  check: v => v.trim().length > 0 },
-    { id: 'applicantUnit',  check: v => v.trim().length > 0 },
-    { id: 'applicantEmail', check: v => isValidEmail(v) },
-    { id: 'title',          check: v => v.trim().length > 0 },
-    { id: 'category',       check: v => v !== '' },
-    { id: 'dueDate',        check: v => v !== '' },
-  ].forEach(({ id, check }) => {
-    const el  = document.getElementById(id);
-    const err = document.getElementById(`err-${id}`);
-    if (!check(el.value)) { el.classList.add('error'); err.classList.add('show'); ok = false; }
-    else { el.classList.remove('error'); err.classList.remove('show'); }
-  });
-  return ok;
-}
-
-const PROGRESS_STAGES = [
-  { pct: 12, msg: '驗證資料...',          delay: 400  },
-  { pct: 28, msg: '建立文件編號...',       delay: 2000 },
-  { pct: 50, msg: '寫入系統資料庫...',     delay: 6000 },
-  { pct: 70, msg: '發送通知 Email...',     delay: 13000 },
-  { pct: 85, msg: '等待伺服器回應...',     delay: 22000 },
-  { pct: 93, msg: '即將完成，請稍候...', delay: 30000 },
-];
-
-function setProgress(pct, msg) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressPct').textContent  = pct + '%';
-  document.getElementById('progressMsg').textContent  = msg;
-}
-
-async function submitForm() {
-  if (!validate()) return;
-
-  // 切換到進度頁
-  document.getElementById('formPage').style.display    = 'none';
-  document.getElementById('progressPage').style.display = 'block';
-  setProgress(0, '準備中...');
-
-  const timers = PROGRESS_STAGES.map(({ pct, msg, delay }) =>
-    setTimeout(() => setProgress(pct, msg), delay)
-  );
-
-  const cosigned       = [...document.querySelectorAll('input[name="cosign"]:checked')].map(el => el.value);
-  const applicantEmail = document.getElementById('applicantEmail').value.trim();
-  const allEmails      = [applicantEmail, ...additionalEmails.keys()]
-    .filter((e, i, a) => a.indexOf(e) === i);
-
-  const payload = {
-    applicant_name:  document.getElementById('applicantName').value.trim(),
-    applicant_unit:  document.getElementById('applicantUnit').value.trim(),
-    applicant_email: applicantEmail,
-    notify_emails:   allEmails.join(','),
-    title:           document.getElementById('title').value.trim(),
-    category:        document.getElementById('category').value,
-    planned_cosign:  cosigned.join(','),
-    due_date:        document.getElementById('dueDate').value,
-    attachment_note: document.getElementById('attachmentNote').value.trim(),
+// ── 計算統計 ──────────────────────────────────────────────
+function computeStats(docs) {
+  const today     = new Date(); today.setHours(0,0,0,0);
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  return {
+    total:    docs.length,
+    progress: docs.filter(d => d.status === 'IN_PROGRESS').length,
+    overdue:  docs.filter(d => d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED').length,
+    month:    docs.filter(d => String(d.created_at || '').startsWith(thisMonth)).length,
   };
+}
 
-  try {
-    const qs   = new URLSearchParams({ action: 'createDoc', ...payload });
-    const res  = await fetch(`${GAS_URL}?${qs.toString()}`);
-    const data = await res.json();
-    timers.forEach(clearTimeout);
-    if (!data.success) throw new Error(data.message || '建檔失敗');
-    setProgress(100, '完成！');
-    setTimeout(() => showSuccess(data.doc_id, data.qr_url), 600);
-  } catch (err) {
-    timers.forEach(clearTimeout);
-    document.getElementById('progressPage').style.display = 'none';
-    document.getElementById('formPage').style.display    = 'block';
-    showToast(err.message || '建檔失敗，請稍後再試', true);
+// ── 取得申請人清單 ─────────────────────────────────────────
+function getApplicants(docs) {
+  const set = new Set(docs.map(d => d.applicant_name).filter(Boolean));
+  return [...set].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+}
+
+// ── 篩選邏輯 ──────────────────────────────────────────────
+// 第一層：只套用狀態 pill + 關鍵字（不含申請人），供申請人下拉動態使用
+function getPreFiltered() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return allDocs.filter(d => {
+    const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
+    if (activeFilter === 'IN_PROGRESS' && d.status !== 'IN_PROGRESS') return false;
+    if (activeFilter === 'REGISTERED'  && d.status !== 'REGISTERED')  return false;
+    if (activeFilter === 'ARCHIVED'    && d.status !== 'ARCHIVED')    return false;
+    if (activeFilter === 'RETURNED'    && d.status !== 'RETURNED')    return false;
+    if (activeFilter === 'OVERDUE'     && !isOverdue)                 return false;
+    if (searchKeyword) {
+      const kw = searchKeyword.toLowerCase();
+      return (d.doc_id         || '').toLowerCase().includes(kw) ||
+             (d.title          || '').toLowerCase().includes(kw) ||
+             (d.applicant_name || '').toLowerCase().includes(kw) ||
+             (d.applicant_unit || '').toLowerCase().includes(kw);
+    }
+    return true;
+  });
+}
+
+// 第二層：在第一層基礎上再加申請人篩選，供文件卡片清單使用
+function getFiltered() {
+  return getPreFiltered().filter(d =>
+    !applicantFilter || d.applicant_name === applicantFilter
+  );
+}
+
+// ── 渲染整頁 ──────────────────────────────────────────────
+function renderAll() {
+  const stats       = computeStats(allDocs);
+  const preFiltered = getPreFiltered();
+  const applicants  = getApplicants(preFiltered);
+
+  // 若目前選的申請人不在新的清單裡，自動清除選擇
+  if (applicantFilter && !applicants.includes(applicantFilter)) {
+    applicantFilter = '';
   }
+
+  const filtered = getFiltered();
+  const today      = new Date(); today.setHours(0,0,0,0);
+
+  document.getElementById('root').innerHTML = `
+    <!-- 統計卡片 -->
+    <div class="stats-row">
+      <div class="stat-card stat-total    ${activeFilter==='ALL'      ? 'active':''}" onclick="setFilter('ALL')">
+        <div class="stat-num">${stats.total}</div>
+        <div class="stat-label">全部文件</div>
+      </div>
+      <div class="stat-card stat-progress ${activeFilter==='IN_PROGRESS'?'active':''}" onclick="setFilter('IN_PROGRESS')">
+        <div class="stat-num">${stats.progress}</div>
+        <div class="stat-label">進行中</div>
+      </div>
+      <div class="stat-card stat-overdue  ${activeFilter==='OVERDUE'  ?'active':''}" onclick="setFilter('OVERDUE')">
+        <div class="stat-num">${stats.overdue}</div>
+        <div class="stat-label">已逾期</div>
+      </div>
+      <div class="stat-card stat-month">
+        <div class="stat-num">${stats.month}</div>
+        <div class="stat-label">本月建檔</div>
+      </div>
+    </div>
+
+    <!-- 篩選區 -->
+    <div class="filter-card">
+      <div class="filter-row">
+        <input class="search-box" type="text" id="searchInput"
+          placeholder="搜尋主旨、申請人、文號…" value="${esc(searchKeyword)}"
+          oninput="onSearch(this.value)">
+        <select class="applicant-select" id="applicantSelect" onchange="onApplicant(this.value)">
+          <option value="">全部申請人</option>
+          ${applicants.map(a => `<option value="${esc(a)}" ${applicantFilter===a?'selected':''}>${esc(a)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="pills">
+        <div class="pill ${activeFilter==='ALL'         ?'active':''}"         onclick="setFilter('ALL')">全部</div>
+        <div class="pill ${activeFilter==='REGISTERED'  ?'active':''}"         onclick="setFilter('REGISTERED')">已建檔</div>
+        <div class="pill ${activeFilter==='IN_PROGRESS' ?'active':''}"         onclick="setFilter('IN_PROGRESS')">進行中</div>
+        <div class="pill pill-returned ${activeFilter==='RETURNED'?'active':''}" onclick="setFilter('RETURNED')">已退件</div>
+        <div class="pill pill-archived ${activeFilter==='ARCHIVED'?'active':''}" onclick="setFilter('ARCHIVED')">已歸檔</div>
+        <div class="pill pill-overdue  ${activeFilter==='OVERDUE' ?'active':''}" onclick="setFilter('OVERDUE')">逾期</div>
+      </div>
+    </div>
+
+    <!-- 結果計數 -->
+    <div class="result-count">顯示 ${filtered.length} 筆${allDocs.length !== filtered.length ? `（共 ${allDocs.length} 筆）` : ''}</div>
+
+    <!-- 文件清單 -->
+    <div id="docList">
+      ${filtered.length === 0
+        ? `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">沒有符合條件的文件</div></div>`
+        : filtered.sort((a,b) => b.created_at.localeCompare(a.created_at)).map(d => renderCard(d, today)).join('')
+      }
+    </div>
+  `;
 }
 
-// ── 成功頁 ────────────────────────────────────────────────
-function showSuccess(docId, qrUrl) {
-  document.getElementById('progressPage').style.display = 'none';
-  document.getElementById('formPage').style.display     = 'none';
-  document.getElementById('successPage').style.display  = 'block';
-  document.getElementById('resultDocId').textContent    = docId;
+// ── 渲染單張卡片 ──────────────────────────────────────────
+function renderCard(d, today) {
+  const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
+  const units = d.planned_route ? d.planned_route.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const base  = location.href.replace(/admin\.html.*$/, '');
 
-  const base      = location.href.replace(/apply\.html.*$/, '');
-  const targetUrl = (qrUrl && qrUrl !== 'undefined' && qrUrl !== 'null')
-    ? qrUrl
-    : (base + 'doc.html?doc=' + encodeURIComponent(docId));
+  return `
+    <div class="doc-card ${CARD_CLASS[d.status] || ''} ${isOverdue ? 'is-overdue' : ''}">
+      <div class="card-top">
+        <div class="card-badges">
+          <span class="badge ${STATUS_CLASS[d.status] || 'badge-registered'}">${STATUS_LABEL[d.status] || d.status}</span>
+          ${d.category ? `<span class="badge badge-category">${esc(d.category)}</span>` : ''}
+          ${isOverdue  ? `<span class="badge badge-overdue">逾期</span>` : ''}
+        </div>
+        <div class="card-date ${isOverdue ? 'overdue' : ''}">
+          ${d.due_date ? '預計：' + d.due_date.substring(0,10) : formatDate(d.created_at)}
+        </div>
+      </div>
 
-  const container = document.getElementById('qrContainer');
-  container.innerHTML = '';
-  container.dataset.url = targetUrl;
-  new QRCode(container, { text: targetUrl, width: 240, height: 240, colorDark: '#000000', colorLight: '#ffffff' });
+      <div class="card-title">${esc(d.title)}</div>
+
+      <div class="card-meta">
+        <span>👤 ${esc(d.applicant_name)}</span>
+        <span>🏢 ${esc(d.applicant_unit)}</span>
+      </div>
+
+      ${units.length > 0 ? `
+      <div class="card-route">
+        ${units.map(u => `<span class="route-unit">${esc(u)}</span>`).join('')}
+      </div>` : ''}
+
+      <div class="card-footer">
+        <div class="card-docid">文號：${esc(d.doc_id)} · 建立 ${formatDate(d.created_at)}</div>
+        <a class="btn-detail" href="${base}status.html?doc=${encodeURIComponent(d.doc_id)}" target="_blank">查看詳情</a>
+      </div>
+    </div>`;
 }
 
-function downloadQR() {
-  const docId  = document.getElementById('resultDocId').textContent;
-  const imgEl  = document.querySelector('#qrContainer img');
-  if (!imgEl) return;
-  const link    = document.createElement('a');
-  link.download = `QRCode_${docId}.png`;
-  link.href     = imgEl.src;
-  link.click();
+// ── 事件處理 ──────────────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  renderAll();
 }
 
-function printQR() {
-  const docId  = document.getElementById('resultDocId').textContent;
-  const imgEl  = document.querySelector('#qrContainer img');
-  const imgSrc = imgEl ? imgEl.src : '';
-  const win    = window.open('', '_blank');
-  win.document.write(`<html><head><title>QR Code — ${docId}</title>
-    <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif}
-    img{width:240px;border:1px solid #eee;padding:8px}p{margin-top:12px;font-size:20px;font-weight:bold;letter-spacing:2px}</style>
-    </head><body onload="window.print()"><img src="${imgSrc}"><p>${docId}</p>
-</body></html>`);
-  win.document.close();
+let searchTimer = null;
+function onSearch(val) {
+  searchKeyword = val;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderAll, 200);
 }
 
-function resetForm() {
-  document.getElementById('formPage').style.display    = 'block';
-  document.getElementById('successPage').style.display  = 'none';
-  document.getElementById('progressPage').style.display = 'none';
-  setProgress(0, '準備中...');
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = false; btn.innerHTML = '送出建檔申請';
-  document.querySelectorAll('input[type="text"],input[type="email"],input[type="date"],textarea')
-    .forEach(el => { el.value = ''; el.classList.remove('error'); });
-  document.getElementById('category').value = '';
-  document.querySelectorAll('input[name="cosign"]')
-    .forEach(el => { el.checked = false; el.closest('label').classList.remove('checked'); });
-  document.querySelectorAll('.error-msg').forEach(el => el.classList.remove('show'));
-  additionalEmails.clear();
-  renderTags();
-  renderContacts();
-  document.getElementById('qrContainer').innerHTML = '';
+function onApplicant(val) {
+  applicantFilter = val;
+  renderAll();
 }
 
 // ── 工具 ──────────────────────────────────────────────────
-function showToast(msg, isError = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className   = `toast show${isError ? ' error' : ''}`;
-  setTimeout(() => { t.className = 'toast'; }, 3500);
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // 啟動
-loadSettings();
-renderContacts();
+loadData();
 </script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");</script>
 </body>
