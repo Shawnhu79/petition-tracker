@@ -268,7 +268,7 @@
   </div>
 
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v1.5.1</div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v2.0.0</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -277,9 +277,6 @@ const BOOK_KEY = 'petition_contacts';
 
 // 預設通訊錄（第一次開啟時自動載入）
 const DEFAULT_CONTACTS = [
-  { name: '鄧協理', email: 'arthur0602@gmail.com@gmail.com' },
-  { name: '施副理', email: 'iamallen620@gmail.com' },
-  { name: '胡景翔', email: 'shawnhu79@gmail.com' },
   { name: '卓子杰', email: 'spectaculartau@gmail.com' },
   { name: '張紫涵', email: 'shedy8896@gmail.com' },
   { name: '林育德', email: 'jasper.fongyi@gmail.com' },
@@ -548,7 +545,8 @@ function printQR() {
   win.document.write(`<html><head><title>QR Code — ${docId}</title>
     <style>body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif}
     img{width:240px;border:1px solid #eee;padding:8px}p{margin-top:12px;font-size:20px;font-weight:bold;letter-spacing:2px}</style>
-    </head><body onload="window.print()"><img src="${imgSrc}"><p>${docId}</p></body></html>`);
+    </head><body onload="window.print()"><img src="${imgSrc}"><p>${docId}</p>
+</body></html>`);
   win.document.close();
 }
 
@@ -587,5 +585,6 @@ function esc(s) {
 loadSettings();
 renderContacts();
 </script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");</script>
 </body>
 </html>
