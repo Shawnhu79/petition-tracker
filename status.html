@@ -10,7 +10,8 @@
     header { background: #1a73e8; color: #fff; padding: 16px 20px; text-align: center; font-size: 18px; font-weight: bold; }
     .container { max-width: 600px; margin: 24px auto; padding: 0 16px 48px; }
     .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
-    .card-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .card-title { font-size: 13px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; }
 
     /* 狀態徽章 */
     .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
@@ -28,49 +29,51 @@
     .meta-value { font-size: 14px; font-weight: 600; color: #333; }
     .meta-full  { grid-column: 1 / -1; }
 
-    /* 逾期警示 */
+    /* 警示橫幅 */
     .overdue-banner {
       background: #ffebee; border: 1.5px solid #ef9a9a; border-radius: 10px;
-      padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #c62828;
-      font-weight: 600;
+      padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #c62828; font-weight: 600;
     }
-    /* 退件提示 */
     .returned-banner {
       background: #fff3e0; border: 1.5px solid #ffb74d; border-radius: 10px;
       padding: 12px 16px; margin-bottom: 14px; font-size: 14px; color: #e65100;
     }
 
-    /* 流程進度步驟 */
-    .steps { display: flex; flex-direction: column; gap: 0; }
-    .step  { display: flex; gap: 14px; position: relative; padding-bottom: 18px; }
-    .step:last-child { padding-bottom: 0; }
-    .step-left { display: flex; flex-direction: column; align-items: center; width: 28px; flex-shrink: 0; }
-    .step-dot  {
-      width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
-      justify-content: center; font-size: 14px; font-weight: bold; flex-shrink: 0; z-index: 1;
+    /* 資訊編輯區 */
+    .btn-edit {
+      padding: 6px 14px; border-radius: 20px; border: 1.5px solid #1a73e8;
+      background: #fff; color: #1a73e8; font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
     }
-    .step-dot-done    { background: #1a73e8; color: #fff; }
-    .step-dot-current { background: #fff3e0; border: 2px solid #e65100; color: #e65100; }
-    .step-dot-pending { background: #f0f0f0; border: 2px solid #ddd; color: #bbb; }
-    .step-dot-return  { background: #ffebee; border: 2px solid #c62828; color: #c62828; }
-    .step-dot-archive { background: #e8f5e9; border: 2px solid #2e7d32; color: #2e7d32; }
-    .step-line {
-      width: 2px; background: #e0e0e0; flex: 1; margin-top: 2px;
+    .btn-edit:hover { background: #e8f0fe; }
+    .edit-form { display: none; margin-top: 4px; }
+    .edit-form.show { display: block; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 6px; }
+    .form-group label .req { color: #e53935; margin-left: 2px; }
+    .form-group input[type="text"],
+    .form-group input[type="date"],
+    .form-group select,
+    .form-group textarea {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px;
+      font-size: 14px; font-family: inherit; color: #333;
     }
-    .step-line-done { background: #1a73e8; }
-    .step-body { padding-top: 3px; flex: 1; min-width: 0; }
-    .step-name { font-size: 15px; font-weight: 600; color: #333; }
-    .step-name-done    { color: #1a73e8; }
-    .step-name-pending { color: #aaa; }
-    .step-name-return  { color: #c62828; }
-    .step-name-archive { color: #2e7d32; }
-    .step-ts   { font-size: 12px; color: #aaa; margin-top: 2px; }
-    .step-tag  { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-top: 4px; }
-    .step-tag-done    { background: #e3f2fd; color: #1565c0; }
-    .step-tag-current { background: #fff3e0; color: #e65100; }
-    .step-tag-pending { background: #f5f5f5; color: #aaa; }
-    .step-tag-return  { background: #ffebee; color: #c62828; }
-    .step-tag-archive { background: #e8f5e9; color: #2e7d32; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: #1a73e8;
+    }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .edit-btns { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-save {
+      flex: 1; padding: 12px; background: #1a73e8; color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit;
+    }
+    .btn-save:hover { background: #1557b0; }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel-edit {
+      flex: 1; padding: 12px; background: #f0f0f0; color: #555; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer; font-family: inherit;
+    }
+    .btn-cancel-edit:hover { background: #e0e0e0; }
 
     /* 歷程時間軸 */
     .timeline { margin-top: 4px; }
@@ -88,6 +91,13 @@
     .tl-comment { font-size: 13px; color: #c62828; margin-top: 4px; background: #ffebee; padding: 6px 8px; border-radius: 6px; }
     .tl-empty  { color: #bbb; font-size: 13px; text-align: center; padding: 12px 0; }
 
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; }
+    .toast.show    { opacity: 1; }
+    .toast.success { background: #2e7d32; }
+    .toast.error   { background: #c62828; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+
     /* Loading / Error */
     .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
     .spinner-lg { display: inline-block; width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
@@ -96,12 +106,7 @@
     .error-msg-text { font-size: 15px; color: #666; }
     .no-param-hint { font-size: 14px; color: #888; margin-top: 8px; line-height: 1.6; }
 
-    /* 重新整理按鈕 */
-    .btn-refresh {
-      display: block; width: 100%; margin-top: 8px; padding: 12px;
-      background: #f0f0f0; color: #555; border: none; border-radius: 8px;
-      font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;
-    }
+    .btn-refresh { display: block; width: 100%; margin-top: 8px; padding: 12px; background: #f0f0f0; color: #555; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
     .btn-refresh:hover { background: #e0e0e0; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -110,13 +115,13 @@
 <body>
 
 <header>📋 簽呈進度查詢</header>
-
 <div class="container" id="app">
   <div class="loading">
     <div class="spinner-lg"></div>
     <div>載入文件資料中…</div>
   </div>
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
@@ -133,12 +138,7 @@ let docId       = '';
 (async function init() {
   const params = new URLSearchParams(location.search);
   docId = params.get('doc') || params.get('id') || '';
-
-  if (!docId) {
-    renderNoParam();
-    return;
-  }
-
+  if (!docId) { renderNoParam(); return; }
   try {
     const res  = await fetch(`${GAS_URL}?action=getDoc&doc_id=${encodeURIComponent(docId)}`);
     const data = await res.json();
@@ -153,29 +153,11 @@ let docId       = '';
 
 // ── 渲染主頁面 ────────────────────────────────────────────
 function renderPage() {
-  const doc     = docData;
-  const today   = new Date(); today.setHours(0,0,0,0);
-  const isOver  = doc.due_date && doc.status !== 'ARCHIVED' && new Date(doc.due_date) < today;
-  const cosigns = doc.planned_route ? doc.planned_route.split(',').map(s => s.trim()).filter(Boolean) : [];
-
-  // 最後一次退件時間（用於判斷當前輪次的收件狀態）
-  const lastReturnTs = historyData
-    .filter(h => h.action === 'RETURN')
-    .reduce((latest, h) => h.timestamp > latest ? h.timestamp : latest, '');
-
-  // 當前輪次的收件紀錄
-  const receivedMap = {};
-  historyData.forEach(h => {
-    if (h.action === 'RECEIVE' && h.timestamp > lastReturnTs) {
-      receivedMap[h.actor_unit] = h.timestamp;
-    }
-  });
-
-  // 歸檔時間
-  const archiveRecord = [...historyData].reverse().find(h => h.action === 'ARCHIVE');
+  const doc    = docData;
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const isOver = doc.due_date && doc.status !== 'ARCHIVED' && new Date(doc.due_date) < today;
 
   document.getElementById('app').innerHTML = `
-
     ${isOver ? `<div class="overdue-banner">⚠️ 此文件已超過預計完成日，請留意進度。</div>` : ''}
     ${doc.status === 'RETURNED' ? `<div class="returned-banner">↩️ 此文件已退件，等待申請人補件後重新送件。</div>` : ''}
 
@@ -217,82 +199,97 @@ function renderPage() {
       </div>
     </div>
 
-    <!-- 流程進度 -->
+    <!-- 資訊編輯 -->
     <div class="card">
-      <div class="card-title">流程進度</div>
-      <div class="steps">
-        ${renderSteps(cosigns, receivedMap, lastReturnTs, archiveRecord, doc.status)}
+      <div class="card-header">
+        <div class="card-title">資訊編輯</div>
+        <button class="btn-edit" id="editToggleBtn" onclick="toggleEdit()">✏️ 編輯</button>
+      </div>
+      <div class="edit-form" id="editForm">
+        <div class="form-group">
+          <label for="editTitle">主旨 <span class="req">*</span></label>
+          <input type="text" id="editTitle" value="${esc(doc.title)}" maxlength="100">
+        </div>
+        <div class="form-group">
+          <label for="editCategory">類別</label>
+          <select id="editCategory">
+            <option value="合約會辦" ${doc.category === '合約會辦' ? 'selected' : ''}>合約會辦</option>
+            <option value="簽呈" ${doc.category === '簽呈' ? 'selected' : ''}>簽呈</option>
+            <option value="其他" ${(doc.category !== '合約會辦' && doc.category !== '簽呈') ? 'selected' : ''}>其他</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editDueDate">預計完成日</label>
+          <input type="date" id="editDueDate" value="${esc(doc.due_date ? doc.due_date.substring(0,10) : '')}">
+        </div>
+        <div class="form-group">
+          <label for="editAttachment">附件說明</label>
+          <textarea id="editAttachment">${esc(doc.attachment_note || '')}</textarea>
+        </div>
+        <div class="edit-btns">
+          <button class="btn-cancel-edit" onclick="toggleEdit()">取消</button>
+          <button class="btn-save" id="editSaveBtn" onclick="saveEdit()">儲存</button>
+        </div>
       </div>
     </div>
 
-    <!-- 歷程時間軸 -->
+    <!-- 操作歷程 -->
     <div class="card">
       <div class="card-title">操作歷程</div>
-      <div class="timeline">
-        ${renderTimeline()}
-      </div>
+      <div class="timeline">${renderTimeline()}</div>
     </div>
 
     <button class="btn-refresh" onclick="location.reload()">🔄 重新整理</button>
   `;
 }
 
-// ── 流程步驟 ──────────────────────────────────────────────
-function renderSteps(cosigns, receivedMap, lastReturnTs, archiveRecord, status) {
-  const steps = [];
+// ── 編輯切換 ──────────────────────────────────────────────
+function toggleEdit() {
+  const form = document.getElementById('editForm');
+  const btn  = document.getElementById('editToggleBtn');
+  const show = !form.classList.contains('show');
+  form.classList.toggle('show', show);
+  btn.textContent = show ? '✕ 關閉' : '✏️ 編輯';
+}
 
-  // 建檔（第一步，永遠完成）
-  const createRecord = historyData.find(h => h.action === 'CREATE') || { timestamp: docData.created_at };
-  steps.push({ type: 'done', icon: '📄', name: '建檔', ts: docData.created_at });
+// ── 儲存編輯 ──────────────────────────────────────────────
+async function saveEdit() {
+  const title    = document.getElementById('editTitle').value.trim();
+  const category = document.getElementById('editCategory').value;
+  const dueDate  = document.getElementById('editDueDate').value;
+  const attach   = document.getElementById('editAttachment').value.trim();
 
-  // 退件歷程插入（如果有退件，顯示在流程中）
-  const returns = historyData.filter(h => h.action === 'RETURN').sort((a,b) => a.timestamp.localeCompare(b.timestamp));
+  if (!title) { showToast('主旨為必填', 'error'); return; }
 
-  // 會簽與主簽單位
-  cosigns.forEach(unit => {
-    const ts = receivedMap[unit];
-    if (ts) {
-      steps.push({ type: 'done', icon: '✅', name: unit, ts });
-    } else if (status === 'ARCHIVED') {
-      steps.push({ type: 'pending', icon: '—', name: unit, ts: null });
-    } else {
-      steps.push({ type: 'pending', icon: '⏳', name: unit, ts: null });
-    }
-  });
+  const btn = document.getElementById('editSaveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>儲存中…';
 
-  // 退件（如果有）
-  if (returns.length > 0) {
-    const lastReturn = returns[returns.length - 1];
-    steps.push({ type: 'return', icon: '↩', name: `退件（${esc(lastReturn.actor_unit)}）`, ts: lastReturn.timestamp, comment: lastReturn.comment });
+  try {
+    const qs = new URLSearchParams({
+      action:          'updateDoc',
+      doc_id:          docId,
+      title,
+      category,
+      due_date:        dueDate,
+      attachment_note: attach,
+    });
+    const res  = await fetch(`${GAS_URL}?${qs.toString()}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '儲存失敗');
+
+    // 更新本地資料並重新渲染
+    docData.title           = title;
+    docData.category        = category;
+    docData.due_date        = dueDate;
+    docData.attachment_note = attach;
+    renderPage();
+    showToast('資訊已更新', 'success');
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '儲存';
+    showToast(e.message || '儲存失敗，請重試', 'error');
   }
-
-  // 歸檔
-  if (status === 'ARCHIVED' && archiveRecord) {
-    steps.push({ type: 'archive', icon: '📁', name: '歸檔完成', ts: archiveRecord.timestamp });
-  } else if (status !== 'ARCHIVED') {
-    steps.push({ type: 'pending', icon: '📁', name: '歸檔', ts: null });
-  }
-
-  return steps.map((s, i) => {
-    const isLast = i === steps.length - 1;
-    const dotCls  = `step-dot step-dot-${s.type}`;
-    const nameCls = `step-name step-name-${s.type}`;
-    const tagMap  = { done: '已完成', pending: '待處理', current: '進行中', return: '已退件', archive: '已歸檔' };
-    const lineCls = `step-line${s.type === 'done' || s.type === 'archive' ? ' step-line-done' : ''}`;
-    return `
-      <div class="step">
-        <div class="step-left">
-          <div class="${dotCls}">${s.icon}</div>
-          ${isLast ? '' : `<div class="${lineCls}"></div>`}
-        </div>
-        <div class="step-body">
-          <div class="${nameCls}">${s.name}</div>
-          ${s.ts ? `<div class="step-ts">${formatTime(s.ts)}</div>` : ''}
-          <span class="step-tag step-tag-${s.type}">${tagMap[s.type] || ''}</span>
-          ${s.comment ? `<div class="tl-comment" style="margin-top:6px;">💬 ${esc(s.comment)}</div>` : ''}
-        </div>
-      </div>`;
-  }).join('');
 }
 
 // ── 歷程時間軸 ────────────────────────────────────────────
@@ -317,10 +314,7 @@ function renderNoParam() {
     <div class="error-page">
       <div class="error-icon">🔍</div>
       <div class="error-msg-text">請透過 Email 中的連結開啟此頁面</div>
-      <div class="no-param-hint">
-        此頁面需要文號才能顯示進度。<br>
-        請從建檔成功通知 Email 中點擊「查看進度」連結。
-      </div>
+      <div class="no-param-hint">此頁面需要文號才能顯示進度。<br>請從建檔成功通知 Email 中點擊「查看進度」連結。</div>
     </div>`;
 }
 
@@ -333,6 +327,13 @@ function renderError(msg) {
 }
 
 // ── 工具 ──────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast show${type ? ' ' + type : ''}`;
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
 function formatTime(ts) {
   if (!ts) return '';
   const d = new Date(ts);
