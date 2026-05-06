@@ -275,45 +275,53 @@
 const GAS_URL  = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
 const BOOK_KEY = 'petition_contacts';
 
-// 預設通訊錄（第一次開啟時自動載入）
-const DEFAULT_CONTACTS = [
-  { name: '鄧協理', email: 'arthur0602@gmail.com' },
-  { name: '施副理', email: 'iamallen620@gmail.com' },
-  { name: '胡景翔', email: 'shawnhu79@gmail.com' },
-  { name: '卓子杰', email: 'spectaculartau@gmail.com' },
-  { name: '張紫涵', email: 'shedy8896@gmail.com' },
-  { name: '林育德', email: 'jasper.fongyi@gmail.com' },
-  { name: '呂佳益', email: 'a0926644565@hotmail.com' },
-  { name: '戴秀惠', email: 'jessietai0638@gmail.com' },
-];
+let gasContacts = []; // 從 GAS contacts 分頁載入
 
 const additionalEmails = new Map(); // email → display label
 
 // ── 通訊錄 ────────────────────────────────────────────────
-function loadContacts() { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[]'); }
-function saveContacts(c) { localStorage.setItem(BOOK_KEY, JSON.stringify(c)); }
+function loadLocalContacts() { return JSON.parse(localStorage.getItem(BOOK_KEY) || '[]'); }
+function saveLocalContacts(c) { localStorage.setItem(BOOK_KEY, JSON.stringify(c)); }
+
+async function loadGasContacts() {
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getContacts`);
+    const data = await res.json();
+    if (data.success && Array.isArray(data.contacts)) gasContacts = data.contacts;
+  } catch (e) { /* GAS 取不到時，只顯示本機手動新增的聯絡人 */ }
+  renderContacts();
+}
 
 function renderContacts() {
-  // 第一次開啟（localStorage 無資料）→ 載入預設名單
-  if (!localStorage.getItem(BOOK_KEY)) {
-    saveContacts(DEFAULT_CONTACTS);
-  }
-  const contacts = loadContacts();
-  const list = document.getElementById('contactsList');
-  if (!contacts.length) {
-    list.innerHTML = '<div class="no-contacts">尚無聯絡人，點右上角「＋ 新增聯絡人」</div>';
-    return;
-  }
-  list.innerHTML = contacts.map((c, i) => `
-    <div class="contact-item" id="ci-${i}">
+  const local = loadLocalContacts();
+  const list  = document.getElementById('contactsList');
+
+  // GAS 通訊錄（在 Google Sheets 維護，無刪除按鈕）
+  const gasHTML = gasContacts.map(c => `
+    <div class="contact-item" data-email="${esc(c.email)}">
+      <label class="contact-label">
+        <input type="checkbox" onchange="toggleContact('${esc(c.email)}','${esc(c.name)}',this)">
+        <span class="contact-name">${esc(c.name)}</span>
+        <span class="contact-email-text">${esc(c.email)}</span>
+      </label>
+    </div>`).join('');
+
+  // 本機手動新增的聯絡人（有刪除按鈕）
+  const localHTML = local.map((c, i) => `
+    <div class="contact-item" data-email="${esc(c.email)}">
       <label class="contact-label">
         <input type="checkbox" onchange="toggleContact('${esc(c.email)}','${esc(c.name)}',this)">
         <span class="contact-name">${esc(c.name)}</span>
         <span class="contact-email-text">${esc(c.email)}</span>
       </label>
       <button class="btn-del-contact" onclick="deleteContact(${i})" title="從通訊錄移除">✕</button>
-    </div>
-  `).join('');
+    </div>`).join('');
+
+  if (!gasHTML && !localHTML) {
+    list.innerHTML = '<div class="no-contacts">尚無聯絡人，點右上角「＋ 新增聯絡人」</div>';
+    return;
+  }
+  list.innerHTML = gasHTML + localHTML;
 }
 
 function toggleContact(email, name, cb) {
@@ -322,9 +330,9 @@ function toggleContact(email, name, cb) {
 }
 
 function deleteContact(idx) {
-  const contacts = loadContacts();
+  const contacts = loadLocalContacts();
   const removed  = contacts.splice(idx, 1)[0];
-  saveContacts(contacts);
+  saveLocalContacts(contacts);
   if (removed) removeEmailTag(removed.email);
   renderContacts();
 }
@@ -343,10 +351,10 @@ function saveNewContact() {
   const email = document.getElementById('newContactEmail').value.trim();
   if (!name)               { showToast('請輸入姓名', true); return; }
   if (!isValidEmail(email)) { showToast('請輸入有效 Email', true); return; }
-  const contacts = loadContacts();
-  if (contacts.some(c => c.email === email)) { showToast('此 Email 已在通訊錄中', true); return; }
+  const contacts = loadLocalContacts();
+  if (gasContacts.some(c => c.email === email) || contacts.some(c => c.email === email)) { showToast('此 Email 已在通訊錄中', true); return; }
   contacts.push({ name, email });
-  saveContacts(contacts);
+  saveLocalContacts(contacts);
   renderContacts();
   toggleAddForm();
   showToast(`✅ 已新增 ${name} 至通訊錄`);
@@ -361,12 +369,8 @@ function addEmailTag(email, label) {
 
 function removeEmailTag(email) {
   additionalEmails.delete(email);
-  loadContacts().forEach((c, i) => {
-    if (c.email === email) {
-      const cb = document.querySelector(`#ci-${i} input`);
-      if (cb) cb.checked = false;
-    }
-  });
+  const cb = document.querySelector(`.contact-item[data-email="${CSS.escape(email)}"] input`);
+  if (cb) cb.checked = false;
   renderTags();
 }
 
@@ -586,7 +590,7 @@ function esc(s) {
 
 // 啟動
 loadSettings();
-renderContacts();
+loadGasContacts(); // 從 GAS contacts 分頁載入通訊錄，完成後自動呼叫 renderContacts
 </script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js");</script>
 </body>
