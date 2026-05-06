@@ -178,35 +178,46 @@ function getApplicants(docs) {
 }
 
 // ── 篩選邏輯 ──────────────────────────────────────────────
-function getFiltered() {
+// 第一層：只套用狀態 pill + 關鍵字（不含申請人），供申請人下拉動態使用
+function getPreFiltered() {
   const today = new Date(); today.setHours(0,0,0,0);
   return allDocs.filter(d => {
     const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
-
     if (activeFilter === 'IN_PROGRESS' && d.status !== 'IN_PROGRESS') return false;
     if (activeFilter === 'REGISTERED'  && d.status !== 'REGISTERED')  return false;
     if (activeFilter === 'ARCHIVED'    && d.status !== 'ARCHIVED')    return false;
     if (activeFilter === 'RETURNED'    && d.status !== 'RETURNED')    return false;
     if (activeFilter === 'OVERDUE'     && !isOverdue)                 return false;
-
-    if (applicantFilter && d.applicant_name !== applicantFilter) return false;
-
     if (searchKeyword) {
       const kw = searchKeyword.toLowerCase();
-      return (d.doc_id          || '').toLowerCase().includes(kw) ||
-             (d.title           || '').toLowerCase().includes(kw) ||
-             (d.applicant_name  || '').toLowerCase().includes(kw) ||
-             (d.applicant_unit  || '').toLowerCase().includes(kw);
+      return (d.doc_id         || '').toLowerCase().includes(kw) ||
+             (d.title          || '').toLowerCase().includes(kw) ||
+             (d.applicant_name || '').toLowerCase().includes(kw) ||
+             (d.applicant_unit || '').toLowerCase().includes(kw);
     }
     return true;
   });
 }
 
+// 第二層：在第一層基礎上再加申請人篩選，供文件卡片清單使用
+function getFiltered() {
+  return getPreFiltered().filter(d =>
+    !applicantFilter || d.applicant_name === applicantFilter
+  );
+}
+
 // ── 渲染整頁 ──────────────────────────────────────────────
 function renderAll() {
-  const stats      = computeStats(allDocs);
-  const applicants = getApplicants(allDocs);
-  const filtered   = getFiltered();
+  const stats       = computeStats(allDocs);
+  const preFiltered = getPreFiltered();
+  const applicants  = getApplicants(preFiltered);
+
+  // 若目前選的申請人不在新的清單裡，自動清除選擇
+  if (applicantFilter && !applicants.includes(applicantFilter)) {
+    applicantFilter = '';
+  }
+
+  const filtered = getFiltered();
   const today      = new Date(); today.setHours(0,0,0,0);
 
   document.getElementById('root').innerHTML = `
