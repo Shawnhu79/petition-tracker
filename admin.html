@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簽呈追蹤儀表板</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', sans-serif; background: #f0f2f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .header-title { font-size: 18px; font-weight: bold; }
+    .header-refresh { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
+    .header-refresh:hover { background: rgba(255,255,255,0.3); }
+
+    .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 48px; }
+
+    /* 統計卡片 */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    @media (max-width: 540px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); text-align: center; cursor: pointer; transition: box-shadow 0.15s; }
+    .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+    .stat-card.active { outline: 2px solid #1a73e8; }
+    .stat-num  { font-size: 32px; font-weight: 800; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: #888; font-weight: 600; }
+    .stat-total    .stat-num { color: #1a73e8; }
+    .stat-progress .stat-num { color: #e65100; }
+    .stat-overdue  .stat-num { color: #c62828; }
+    .stat-month    .stat-num { color: #2e7d32; }
+
+    /* 篩選區 */
+    .filter-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .search-box {
+      flex: 1; min-width: 180px; padding: 10px 14px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+    }
+    .search-box:focus { outline: none; border-color: #1a73e8; }
+    .applicant-select {
+      flex: 1; min-width: 160px; padding: 10px 12px; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 14px; font-family: inherit; background: #fff;
+    }
+    .applicant-select:focus { outline: none; border-color: #1a73e8; }
+
+    /* 狀態 pills */
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pill {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 1.5px solid #e0e0e0; background: #fff; color: #666;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .pill:hover  { border-color: #1a73e8; color: #1a73e8; }
+    .pill.active { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    .pill.pill-overdue.active  { background: #c62828; border-color: #c62828; }
+    .pill.pill-returned.active { background: #e65100; border-color: #e65100; }
+    .pill.pill-archived.active { background: #2e7d32; border-color: #2e7d32; }
+
+    /* 結果計數 */
+    .result-count { font-size: 13px; color: #888; margin-bottom: 10px; padding: 0 2px; }
+
+    /* 文件卡片 */
+    .doc-card {
+      background: #fff; border-radius: 12px; padding: 16px 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06); margin-bottom: 10px;
+      transition: box-shadow 0.15s; border-left: 4px solid transparent;
+    }
+    .doc-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.10); }
+    .doc-card.status-in-progress { border-left-color: #e65100; }
+    .doc-card.status-registered  { border-left-color: #1a73e8; }
+    .doc-card.status-archived    { border-left-color: #2e7d32; }
+    .doc-card.status-returned    { border-left-color: #c62828; }
+    .doc-card.is-overdue         { background: #fffde7; }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .card-badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-registered { background: #e3f2fd; color: #1565c0; }
+    .badge-inprogress { background: #fff3e0; color: #e65100; }
+    .badge-archived   { background: #e8f5e9; color: #2e7d32; }
+    .badge-returned   { background: #ffebee; color: #c62828; }
+    .badge-overdue    { background: #ffebee; color: #c62828; }
+    .badge-category   { background: #f3e5f5; color: #6a1b9a; }
+
+    .card-date { font-size: 12px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+    .card-date.overdue { color: #c62828; font-weight: 600; }
+
+    .card-title { font-size: 16px; font-weight: 700; color: #222; margin-bottom: 6px; line-height: 1.4; }
+
+    .card-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: #666; margin-bottom: 8px; }
+    .card-meta span::before { margin-right: 3px; }
+
+    .card-route { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .route-unit { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f0f0; color: #555; }
+
+    .card-footer { display: flex; justify-content: space-between; align-items: center; }
+    .card-docid { font-size: 12px; color: #bbb; }
+    .btn-detail {
+      font-size: 13px; font-weight: 600; color: #1a73e8; text-decoration: none;
+      padding: 6px 12px; border-radius: 6px; border: 1.5px solid #1a73e8; background: #fff;
+      transition: all 0.15s;
+    }
+    .btn-detail:hover { background: #e8f0fe; }
+
+    /* 空狀態 */
+    .empty-state { text-align: center; padding: 48px 20px; color: #bbb; }
+    .empty-icon  { font-size: 40px; margin-bottom: 10px; }
+    .empty-text  { font-size: 15px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 60px 20px; color: #888; font-size: 15px; }
+    .spinner-lg { display: inline-block; width: 32px; height: 32px; border: 3px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+    .error-banner { background: #ffebee; border: 1.5px solid #ef9a9a; border-radius: 10px; padding: 14px 16px; color: #c62828; font-size: 14px; margin-bottom: 16px; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">📊 簽呈追蹤儀表板</div>
+  <button class="header-refresh" onclick="loadData()">🔄 重新整理</button>
+</header>
+
+<div class="container">
+  <div id="root">
+    <div class="loading">
+      <div class="spinner-lg"></div>
+      <div>載入資料中…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
+const DOC_PAGE = 'doc.html';
+const STATUS_PAGE = 'status.html';
+
+const STATUS_LABEL = { REGISTERED: '已建檔', IN_PROGRESS: '進行中', ARCHIVED: '已歸檔', RETURNED: '已退件' };
+const STATUS_CLASS = { REGISTERED: 'badge-registered', IN_PROGRESS: 'badge-inprogress', ARCHIVED: 'badge-archived', RETURNED: 'badge-returned' };
+const CARD_CLASS  = { REGISTERED: 'status-registered', IN_PROGRESS: 'status-in-progress', ARCHIVED: 'status-archived', RETURNED: 'status-returned' };
+
+let allDocs        = [];
+let activeFilter   = 'ALL';
+let searchKeyword  = '';
+let applicantFilter = '';
+
+// ── 載入資料 ──────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('root').innerHTML = `
+    <div class="loading"><div class="spinner-lg"></div><div>載入資料中…</div></div>`;
+  try {
+    const res  = await fetch(`${GAS_URL}?action=getDashboard`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '載入失敗');
+    allDocs = data.docs || [];
+    renderAll();
+  } catch (e) {
+    document.getElementById('root').innerHTML =
+      `<div class="error-banner">⚠️ ${e.message || '無法連接伺服器，請稍後重試'}</div>`;
+  }
+}
+
+// ── 計算統計 ──────────────────────────────────────────────
+function computeStats(docs) {
+  const today     = new Date(); today.setHours(0,0,0,0);
+  const thisMonth = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  return {
+    total:    docs.length,
+    progress: docs.filter(d => d.status === 'IN_PROGRESS').length,
+    overdue:  docs.filter(d => d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED').length,
+    month:    docs.filter(d => String(d.created_at || '').startsWith(thisMonth)).length,
+  };
+}
+
+// ── 取得申請人清單 ─────────────────────────────────────────
+function getApplicants(docs) {
+  const set = new Set(docs.map(d => d.applicant_name).filter(Boolean));
+  return [...set].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+}
+
+// ── 篩選邏輯 ──────────────────────────────────────────────
+function getFiltered() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return allDocs.filter(d => {
+    const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
+
+    if (activeFilter === 'IN_PROGRESS' && d.status !== 'IN_PROGRESS') return false;
+    if (activeFilter === 'REGISTERED'  && d.status !== 'REGISTERED')  return false;
+    if (activeFilter === 'ARCHIVED'    && d.status !== 'ARCHIVED')    return false;
+    if (activeFilter === 'RETURNED'    && d.status !== 'RETURNED')    return false;
+    if (activeFilter === 'OVERDUE'     && !isOverdue)                 return false;
+
+    if (applicantFilter && d.applicant_name !== applicantFilter) return false;
+
+    if (searchKeyword) {
+      const kw = searchKeyword.toLowerCase();
+      return (d.doc_id          || '').toLowerCase().includes(kw) ||
+             (d.title           || '').toLowerCase().includes(kw) ||
+             (d.applicant_name  || '').toLowerCase().includes(kw) ||
+             (d.applicant_unit  || '').toLowerCase().includes(kw);
+    }
+    return true;
+  });
+}
+
+// ── 渲染整頁 ──────────────────────────────────────────────
+function renderAll() {
+  const stats      = computeStats(allDocs);
+  const applicants = getApplicants(allDocs);
+  const filtered   = getFiltered();
+  const today      = new Date(); today.setHours(0,0,0,0);
+
+  document.getElementById('root').innerHTML = `
+    <!-- 統計卡片 -->
+    <div class="stats-row">
+      <div class="stat-card stat-total    ${activeFilter==='ALL'      ? 'active':''}" onclick="setFilter('ALL')">
+        <div class="stat-num">${stats.total}</div>
+        <div class="stat-label">全部文件</div>
+      </div>
+      <div class="stat-card stat-progress ${activeFilter==='IN_PROGRESS'?'active':''}" onclick="setFilter('IN_PROGRESS')">
+        <div class="stat-num">${stats.progress}</div>
+        <div class="stat-label">進行中</div>
+      </div>
+      <div class="stat-card stat-overdue  ${activeFilter==='OVERDUE'  ?'active':''}" onclick="setFilter('OVERDUE')">
+        <div class="stat-num">${stats.overdue}</div>
+        <div class="stat-label">已逾期</div>
+      </div>
+      <div class="stat-card stat-month">
+        <div class="stat-num">${stats.month}</div>
+        <div class="stat-label">本月建檔</div>
+      </div>
+    </div>
+
+    <!-- 篩選區 -->
+    <div class="filter-card">
+      <div class="filter-row">
+        <input class="search-box" type="text" id="searchInput"
+          placeholder="搜尋主旨、申請人、文號…" value="${esc(searchKeyword)}"
+          oninput="onSearch(this.value)">
+        <select class="applicant-select" id="applicantSelect" onchange="onApplicant(this.value)">
+          <option value="">全部申請人</option>
+          ${applicants.map(a => `<option value="${esc(a)}" ${applicantFilter===a?'selected':''}>${esc(a)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="pills">
+        <div class="pill ${activeFilter==='ALL'         ?'active':''}"         onclick="setFilter('ALL')">全部</div>
+        <div class="pill ${activeFilter==='REGISTERED'  ?'active':''}"         onclick="setFilter('REGISTERED')">已建檔</div>
+        <div class="pill ${activeFilter==='IN_PROGRESS' ?'active':''}"         onclick="setFilter('IN_PROGRESS')">進行中</div>
+        <div class="pill pill-returned ${activeFilter==='RETURNED'?'active':''}" onclick="setFilter('RETURNED')">已退件</div>
+        <div class="pill pill-archived ${activeFilter==='ARCHIVED'?'active':''}" onclick="setFilter('ARCHIVED')">已歸檔</div>
+        <div class="pill pill-overdue  ${activeFilter==='OVERDUE' ?'active':''}" onclick="setFilter('OVERDUE')">逾期</div>
+      </div>
+    </div>
+
+    <!-- 結果計數 -->
+    <div class="result-count">顯示 ${filtered.length} 筆${allDocs.length !== filtered.length ? `（共 ${allDocs.length} 筆）` : ''}</div>
+
+    <!-- 文件清單 -->
+    <div id="docList">
+      ${filtered.length === 0
+        ? `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">沒有符合條件的文件</div></div>`
+        : filtered.sort((a,b) => b.created_at.localeCompare(a.created_at)).map(d => renderCard(d, today)).join('')
+      }
+    </div>
+  `;
+}
+
+// ── 渲染單張卡片 ──────────────────────────────────────────
+function renderCard(d, today) {
+  const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
+  const units = d.planned_route ? d.planned_route.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const base  = location.href.replace(/admin\.html.*$/, '');
+
+  return `
+    <div class="doc-card ${CARD_CLASS[d.status] || ''} ${isOverdue ? 'is-overdue' : ''}">
+      <div class="card-top">
+        <div class="card-badges">
+          <span class="badge ${STATUS_CLASS[d.status] || 'badge-registered'}">${STATUS_LABEL[d.status] || d.status}</span>
+          ${d.category ? `<span class="badge badge-category">${esc(d.category)}</span>` : ''}
+          ${isOverdue  ? `<span class="badge badge-overdue">逾期</span>` : ''}
+        </div>
+        <div class="card-date ${isOverdue ? 'overdue' : ''}">
+          ${d.due_date ? '預計：' + d.due_date.substring(0,10) : formatDate(d.created_at)}
+        </div>
+      </div>
+
+      <div class="card-title">${esc(d.title)}</div>
+
+      <div class="card-meta">
+        <span>👤 ${esc(d.applicant_name)}</span>
+        <span>🏢 ${esc(d.applicant_unit)}</span>
+      </div>
+
+      ${units.length > 0 ? `
+      <div class="card-route">
+        ${units.map(u => `<span class="route-unit">${esc(u)}</span>`).join('')}
+      </div>` : ''}
+
+      <div class="card-footer">
+        <div class="card-docid">文號：${esc(d.doc_id)} · 建立 ${formatDate(d.created_at)}</div>
+        <a class="btn-detail" href="${base}status.html?doc=${encodeURIComponent(d.doc_id)}" target="_blank">查看詳情</a>
+      </div>
+    </div>`;
+}
+
+// ── 事件處理 ──────────────────────────────────────────────
+function setFilter(f) {
+  activeFilter = f;
+  renderAll();
+}
+
+let searchTimer = null;
+function onSearch(val) {
+  searchKeyword = val;
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderAll, 200);
+}
+
+function onApplicant(val) {
+  applicantFilter = val;
+  renderAll();
+}
+
+// ── 工具 ──────────────────────────────────────────────────
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (isNaN(d)) return ts;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// 啟動
+loadData();
+</script>
+</body>
+</html>
