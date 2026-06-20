@@ -127,8 +127,10 @@
 
       <div class="form-group">
         <label for="applicantUnit">申請人單位 <span class="req">*</span></label>
-        <input type="text" id="applicantUnit" maxlength="20" placeholder="請輸入申請人單位">
-        <div class="error-msg" id="err-applicantUnit">請填寫申請人單位</div>
+        <select id="applicantUnit">
+          <option value="">請選擇申請人單位</option>
+        </select>
+        <div class="error-msg" id="err-applicantUnit">請選擇申請人單位</div>
       </div>
 
       <div class="form-group">
@@ -256,7 +258,7 @@
   </div>
 
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v.3。此程式為某人自行製作非官方推行，旨在提升自我工作效率，請自行斟酌使用。</div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v.3.1。此程式為某人自行製作非官方推行，旨在提升自我工作效率，請自行斟酌使用。</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -407,6 +409,13 @@ async function loadSettings() {
     } else {
       group.innerHTML = '<div style="color:#999;font-size:13px;">（無會簽單位）</div>';
     }
+    const unitSelect = document.getElementById('applicantUnit');
+    if (data.publish_units && data.publish_units.length > 0) {
+      unitSelect.innerHTML = '<option value="">請選擇申請人單位</option>' +
+        data.publish_units.map(u => `<option value="${u}">${u}</option>`).join('');
+    } else {
+      unitSelect.innerHTML = '<option value="">（無可選單位）</option>';
+    }
   } catch { showToast('載入設定失敗，請重新整理頁面', true); }
 }
 
@@ -423,7 +432,7 @@ function validate() {
   let ok = true;
   [
     { id: 'applicantName',  check: v => v.trim().length > 0 },
-    { id: 'applicantUnit',  check: v => v.trim().length > 0 },
+    { id: 'applicantUnit',  check: v => v !== '' },
     { id: 'applicantEmail', check: v => isValidEmail(v) },
     { id: 'title',          check: v => v.trim().length > 0 },
     { id: 'category',       check: v => v !== '' },
@@ -547,6 +556,7 @@ function resetForm() {
   btn.disabled = false; btn.innerHTML = '送出建檔申請';
   document.querySelectorAll('input[type="text"],input[type="email"],input[type="date"],textarea')
     .forEach(el => { el.value = ''; el.classList.remove('error'); });
+  document.getElementById('applicantUnit').value = '';
   document.getElementById('category').value = '';
   document.querySelectorAll('input[name="cosign"]')
     .forEach(el => { el.checked = false; el.closest('label').classList.remove('checked'); });
