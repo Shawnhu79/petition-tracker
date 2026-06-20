@@ -31,7 +31,6 @@
     .checkbox-item input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
     .checkbox-item.checked { background: #1a73e8; border-color: #1a73e8; color: #fff; }
 
-
     /* 通知名單區 */
     .notify-section { background: #fafafa; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 16px; }
     .tags-container { display: flex; flex-wrap: wrap; gap: 6px; min-height: 36px; padding: 4px 0; margin: 8px 0; align-items: center; }
@@ -127,9 +126,9 @@
       </div>
 
       <div class="form-group">
-        <label for="applicantUnit">申請案別 <span class="req">*</span></label>
-        <input type="text" id="applicantUnit" maxlength="20" placeholder="請輸入申請案別">
-        <div class="error-msg" id="err-applicantUnit">請填寫申請案別</div>
+        <label for="applicantUnit">申請人單位 <span class="req">*</span></label>
+        <input type="text" id="applicantUnit" maxlength="20" placeholder="請輸入所屬單位">
+        <div class="error-msg" id="err-applicantUnit">請填寫申請人單位</div>
       </div>
 
       <div class="form-group">
@@ -225,7 +224,7 @@
         </div>
         <div class="progress-pct" id="progressPct">0%</div>
         <div class="progress-msg" id="progressMsg">準備中...</div>
-        <div class="progress-note">Google 系統首次啟動需要約 20–40 秒，請勿離開頁面，景翔個人製作並非官方發行，旨在提升工作效率，真斟酌使用</div>
+        <div class="progress-note">Google 系統首次啟動需要約 20–40 秒，請勿離開頁面</div>
       </div>
     </div>
   </div>
@@ -257,7 +256,7 @@
   </div>
 
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v2.2.0</div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v2.1.0</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -407,13 +406,6 @@ async function loadSettings() {
       `).join('');
     } else {
       group.innerHTML = '<div style="color:#999;font-size:13px;">（無會簽單位）</div>';
-    }
-    const chain = document.getElementById('mainChain');
-    if (data.main_chain && data.main_chain.length > 0) {
-      chain.innerHTML = data.main_chain.map((u, i) =>
-        `<span class="chain-unit">${u}</span>` +
-        (i < data.main_chain.length - 1 ? '<span class="chain-arrow">→</span>' : '')
-      ).join('');
     }
   } catch { showToast('載入設定失敗，請重新整理頁面', true); }
 }
