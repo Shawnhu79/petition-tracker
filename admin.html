@@ -12,6 +12,12 @@
     .header-refresh { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: inherit; }
     .header-refresh:hover { background: rgba(255,255,255,0.3); }
 
+    /* 分頁 Tab */
+    .tab-bar { background: #fff; border-bottom: 1.5px solid #e0e0e0; display: flex; }
+    .tab { padding: 12px 24px; font-size: 14px; font-weight: 600; border: none; background: none; cursor: pointer; color: #666; border-bottom: 3px solid transparent; font-family: inherit; transition: all 0.15s; }
+    .tab:hover { color: #1a73e8; }
+    .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+
     .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 48px; }
 
     /* 統計卡片 */
@@ -111,6 +117,30 @@
     .error-banner { background: #ffebee; border: 1.5px solid #ef9a9a; border-radius: 10px; padding: 14px 16px; color: #c62828; font-size: 14px; margin-bottom: 16px; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 刪除按鈕 */
+    .btn-delete { font-size: 13px; font-weight: 600; color: #c62828; padding: 6px 12px; border-radius: 6px; border: 1.5px solid #c62828; background: #fff; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .btn-delete:hover { background: #ffebee; }
+
+    /* 刪除確認 Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 999; padding: 20px; }
+    .modal-overlay.hidden { display: none; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 28px 24px; max-width: 420px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+    .modal-title { font-size: 18px; font-weight: bold; color: #c62828; margin-bottom: 12px; }
+    .modal-body { font-size: 14px; color: #555; line-height: 1.7; margin-bottom: 16px; }
+    .modal-input { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+    .modal-input:focus { outline: none; border-color: #c62828; }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-modal-cancel { padding: 10px 20px; border-radius: 8px; border: 1.5px solid #ddd; background: #f5f5f5; color: #666; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-modal-confirm { padding: 10px 20px; border-radius: 8px; border: none; background: #c62828; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-modal-confirm:hover { background: #b71c1c; }
+    .btn-modal-confirm:disabled { background: #ccc; cursor: not-allowed; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 320px; text-align: center; }
+    .toast.show { opacity: 1; }
+    .toast.toast-success { background: #2e7d32; }
+    .toast.toast-error   { background: #c62828; }
   </style>
 </head>
 <body>
@@ -120,6 +150,11 @@
   <button class="header-refresh" onclick="loadData()">🔄 重新整理</button>
 </header>
 
+<div class="tab-bar">
+  <button class="tab active" id="tab-all"    onclick="setTab('')">全部</button>
+  <button class="tab"        id="tab-design" onclick="setTab('規劃設計處')">規劃設計處</button>
+</div>
+
 <div class="container">
   <div id="root">
     <div class="loading">
@@ -128,6 +163,20 @@
     </div>
   </div>
 </div>
+
+<!-- 刪除確認 Modal -->
+<div class="modal-overlay hidden" id="deleteModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-title">🗑 確認刪除文件</div>
+    <div class="modal-body" id="modalBody"></div>
+    <input class="modal-input" type="password" id="adminPwInput" placeholder="請輸入管理員密碼" oninput="checkPwInput()">
+    <div class="modal-btns">
+      <button class="btn-modal-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-modal-confirm" id="confirmDeleteBtn" disabled onclick="confirmDelete()">確認刪除</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <script>
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYJNuVsEN7P_NhapRW8GthVg028jtRKoUXzYAr8cxQYggdL0SOI3YnfEnfo0GVxdiJ/exec';
@@ -142,6 +191,7 @@ let allDocs        = [];
 let activeFilter   = 'ALL';
 let searchKeyword  = '';
 let applicantFilter = '';
+let unitFilter     = '';
 
 // ── 載入資料 ──────────────────────────────────────────────
 async function loadData() {
@@ -178,10 +228,11 @@ function getApplicants(docs) {
 }
 
 // ── 篩選邏輯 ──────────────────────────────────────────────
-// 第一層：只套用狀態 pill + 關鍵字（不含申請人），供申請人下拉動態使用
+// 第一層：只套用分頁單位 + 狀態 pill + 關鍵字（不含申請人），供申請人下拉動態使用
 function getPreFiltered() {
   const today = new Date(); today.setHours(0,0,0,0);
   return allDocs.filter(d => {
+    if (unitFilter && d.applicant_unit !== unitFilter) return false;
     const isOverdue = d.due_date && new Date(d.due_date) < today && d.status !== 'ARCHIVED';
     if (activeFilter === 'IN_PROGRESS' && d.status !== 'IN_PROGRESS') return false;
     if (activeFilter === 'REGISTERED'  && d.status !== 'REGISTERED')  return false;
@@ -308,7 +359,10 @@ function renderCard(d, today) {
 
       <div class="card-footer">
         <div class="card-docid">文號：${esc(d.doc_id)} · 建立 ${formatDate(d.created_at)}</div>
-        <a class="btn-detail" href="${base}status.html?doc=${encodeURIComponent(d.doc_id)}" target="_blank">查看詳情</a>
+        <div style="display:flex;gap:8px;">
+          <a class="btn-detail" href="${base}status.html?doc=${encodeURIComponent(d.doc_id)}" target="_blank">查看詳情</a>
+          <button class="btn-delete" onclick="showDeleteModal('${esc(d.doc_id)}','${esc(d.title)}')">刪除</button>
+        </div>
       </div>
     </div>`;
 }
@@ -331,6 +385,16 @@ function onApplicant(val) {
   renderAll();
 }
 
+function setTab(unit) {
+  unitFilter      = unit;
+  applicantFilter = '';
+  activeFilter    = 'ALL';
+  searchKeyword   = '';
+  document.getElementById('tab-all').classList.toggle('active',    unit === '');
+  document.getElementById('tab-design').classList.toggle('active', unit === '規劃設計處');
+  renderAll();
+}
+
 // ── 工具 ──────────────────────────────────────────────────
 function formatDate(ts) {
   if (!ts) return '—';
@@ -341,6 +405,60 @@ function formatDate(ts) {
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── 刪除文件 ──────────────────────────────────────────────
+let pendingDeleteId = null;
+
+function showDeleteModal(docId, title) {
+  pendingDeleteId = docId;
+  document.getElementById('modalBody').innerHTML =
+    `確定要永久刪除以下文件嗎？<br><br>` +
+    `<strong>文號：${esc(docId)}</strong><br>` +
+    `<strong>主旨：${esc(title)}</strong><br><br>` +
+    `此操作將同時刪除所有歷程記錄，且 <strong>無法還原</strong>，請輸入管理員密碼確認。`;
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('confirmDeleteBtn').disabled = true;
+  document.getElementById('deleteModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('adminPwInput').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('deleteModal').classList.add('hidden');
+  pendingDeleteId = null;
+}
+
+function checkPwInput() {
+  document.getElementById('confirmDeleteBtn').disabled =
+    document.getElementById('adminPwInput').value.trim().length === 0;
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  const pw  = document.getElementById('adminPwInput').value.trim();
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled    = true;
+  btn.textContent = '刪除中...';
+  try {
+    const qs  = new URLSearchParams({ action: 'deleteDoc', doc_id: pendingDeleteId, admin_token: pw });
+    const res = await fetch(`${GAS_URL}?${qs.toString()}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || '刪除失敗');
+    closeModal();
+    showToast('文件已成功刪除', 'toast-success');
+    await loadData();
+  } catch (e) {
+    showToast(e.message || '刪除失敗，請確認密碼是否正確', 'toast-error');
+    btn.disabled    = false;
+    btn.textContent = '確認刪除';
+  }
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = `toast show${type ? ' ' + type : ''}`;
+  setTimeout(() => { t.className = 'toast'; }, 3500);
 }
 
 // 啟動
