@@ -95,7 +95,10 @@
     .card-meta span::before { margin-right: 3px; }
 
     .card-route { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-    .route-unit { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f0f0; color: #555; }
+    .route-unit          { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #f0f0f0; color: #555; }
+    .route-unit.done     { background: #e8f5e9; color: #2e7d32; }
+    .route-unit.current  { background: #e3f2fd; color: #1565c0; font-weight: 700; }
+    .route-unit.returned { background: #ffebee; color: #c62828; }
 
     .card-footer { display: flex; justify-content: space-between; align-items: center; }
     .card-docid { font-size: 12px; color: #bbb; }
@@ -354,7 +357,7 @@ function renderCard(d, today) {
 
       ${units.length > 0 ? `
       <div class="card-route">
-        ${units.map(u => `<span class="route-unit">${esc(u)}</span>`).join('')}
+        ${units.map((u, i) => `<span class="route-unit ${unitStatus(u, i, units, d)}">${esc(u)}</span>`).join('')}
       </div>` : ''}
 
       <div class="card-footer">
@@ -393,6 +396,22 @@ function setTab(unit) {
   document.getElementById('tab-all').classList.toggle('active',    unit === '');
   document.getElementById('tab-design').classList.toggle('active', unit === '規劃設計處');
   renderAll();
+}
+
+// ── 簽核單位狀態判斷 ──────────────────────────────────────
+function unitStatus(unit, idx, route, doc) {
+  if (doc.status === 'ARCHIVED') return 'done';
+  if (doc.returned_unit === unit) return 'returned';
+  const received = Array.isArray(doc.received_units) ? doc.received_units : [];
+  if (received.includes(unit)) {
+    // 下一個單位也已收件 → 本關完成
+    if (idx < route.length - 1 && received.includes(route[idx + 1])) return 'done';
+    // 文件已退件（被別人退）→ 本關已完成
+    if (doc.status === 'RETURNED') return 'done';
+    // 最後一個已收件的單位 → 正在簽核中
+    return 'current';
+  }
+  return '';  // pending，套用預設灰色
 }
 
 // ── 工具 ──────────────────────────────────────────────────
