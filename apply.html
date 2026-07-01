@@ -89,6 +89,18 @@
     .email-notice { background: #e8f5e9; border: 1.5px solid #4caf50; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #2e7d32; margin: 12px 0; }
     .section-title { font-size: 13px; color: #666; font-weight: 600; margin-bottom: 8px; }
 
+    /* 預覽頁 */
+    #previewPage { display: none; }
+    .preview-title { font-size: 16px; font-weight: bold; color: #1a73e8; padding-bottom: 12px; border-bottom: 1.5px solid #eee; margin-bottom: 16px; }
+    .preview-section { border: 1.5px solid #e0e0e0; border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+    .preview-row { display: flex; align-items: flex-start; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; gap: 12px; }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-label { color: #888; font-weight: 600; min-width: 110px; flex-shrink: 0; padding-top: 2px; }
+    .preview-value { color: #222; flex: 1; line-height: 1.5; }
+    .preview-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .preview-tag { background: #f0f4ff; border: 1px solid #c5d0f0; border-radius: 4px; padding: 2px 8px; font-size: 13px; color: #3d5afe; }
+    .preview-notice { background: #fff8e1; border: 1.5px solid #ffd54f; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #5d4037; line-height: 1.7; margin-bottom: 16px; }
+
     /* 進度頁 */
     #progressPage { display: none; }
     .progress-card { text-align: center; padding: 16px 0 8px; }
@@ -186,8 +198,6 @@
           <option value="">請選擇類別</option>
           <option value="合約會辦">合約會辦</option>
           <option value="簽呈">簽呈</option>
-          <option value="備忘錄">備忘錄</option>
-          <option value="工程變更追加減單">工程變更追加減單</option>
         </select>
         <div class="error-msg" id="err-category">請選擇簽呈類別</div>
       </div>
@@ -214,6 +224,58 @@
       <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">
         送出建檔申請
       </button>
+    </div>
+  </div>
+
+  <!-- 預覽確認頁 -->
+  <div id="previewPage">
+    <div class="card">
+      <div class="preview-title">📋 確認申請內容</div>
+      <div class="preview-section">
+        <div class="preview-row">
+          <span class="preview-label">申請人姓名</span>
+          <span class="preview-value" id="pv-name"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">申請人單位</span>
+          <span class="preview-value" id="pv-unit"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">申請人 Email</span>
+          <span class="preview-value" id="pv-email"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">附加通知對象</span>
+          <span class="preview-value"><div class="preview-tags" id="pv-emails"></div></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">簽呈主旨</span>
+          <span class="preview-value" id="pv-title"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">簽呈類別</span>
+          <span class="preview-value" id="pv-cat"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">會簽單位</span>
+          <span class="preview-value"><div class="preview-tags" id="pv-cosign"></div></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">預計完成日</span>
+          <span class="preview-value" id="pv-due"></span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-label">附件說明</span>
+          <span class="preview-value" id="pv-note"></span>
+        </div>
+      </div>
+      <div class="preview-notice">
+        ⚠️ 請再確認內容無敏感資料，此工具旨在提升工作幸福度及提高個人工作效率，非官方提供。
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" onclick="backToForm()">← 返回修改</button>
+        <button class="btn btn-primary" onclick="doSubmit()">確認送出</button>
+      </div>
     </div>
   </div>
 
@@ -260,7 +322,7 @@
   </div>
 
 </div>
-<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v.3.2。此程式為某人自行製作非官方推行，旨在提升自我工作效率，請自行斟酌使用。</div>
+<div style="text-align:center;padding:12px 0 24px;font-size:11px;color:#ccc;">v.4。此程式為某人自行製作非官方推行，旨在提升自我工作效率，請自行斟酌使用。</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -463,11 +525,49 @@ function setProgress(pct, msg) {
   document.getElementById('progressMsg').textContent  = msg;
 }
 
-async function submitForm() {
+function submitForm() {
   if (!validate()) return;
+  showPreview();
+}
 
-  // 切換到進度頁
+function showPreview() {
+  const name     = document.getElementById('applicantName').value.trim();
+  const unit     = document.getElementById('applicantUnit').value;
+  const email    = document.getElementById('applicantEmail').value.trim();
+  const title    = document.getElementById('title').value.trim();
+  const cat      = document.getElementById('category').value;
+  const due      = document.getElementById('dueDate').value;
+  const note     = document.getElementById('attachmentNote').value.trim();
+  const cosigned = [...document.querySelectorAll('input[name="cosign"]:checked')].map(el => el.value);
+  const addList  = [...additionalEmails.keys()];
+
+  document.getElementById('pv-name').textContent  = name;
+  document.getElementById('pv-unit').textContent  = unit;
+  document.getElementById('pv-email').textContent = email;
+  document.getElementById('pv-title').textContent = title;
+  document.getElementById('pv-cat').textContent   = cat;
+  document.getElementById('pv-due').textContent   = due || '—';
+  document.getElementById('pv-note').textContent  = note || '（無）';
+
+  document.getElementById('pv-cosign').innerHTML = cosigned.length > 0
+    ? cosigned.map(u => `<span class="preview-tag">${esc(u)}</span>`).join('')
+    : '<span style="color:#bbb">（未選擇）</span>';
+
+  document.getElementById('pv-emails').innerHTML = addList.length > 0
+    ? addList.map(e => `<span class="preview-tag">${esc(additionalEmails.get(e) || e)}</span>`).join('')
+    : '<span style="color:#bbb">（無）</span>';
+
   document.getElementById('formPage').style.display    = 'none';
+  document.getElementById('previewPage').style.display = 'block';
+}
+
+function backToForm() {
+  document.getElementById('previewPage').style.display = 'none';
+  document.getElementById('formPage').style.display    = 'block';
+}
+
+async function doSubmit() {
+  document.getElementById('previewPage').style.display  = 'none';
   document.getElementById('progressPage').style.display = 'block';
   setProgress(0, '準備中...');
 
@@ -550,9 +650,10 @@ function printQR() {
 }
 
 function resetForm() {
-  document.getElementById('formPage').style.display    = 'block';
+  document.getElementById('formPage').style.display     = 'block';
   document.getElementById('successPage').style.display  = 'none';
   document.getElementById('progressPage').style.display = 'none';
+  document.getElementById('previewPage').style.display  = 'none';
   setProgress(0, '準備中...');
   const btn = document.getElementById('submitBtn');
   btn.disabled = false; btn.innerHTML = '送出建檔申請';
